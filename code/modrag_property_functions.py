@@ -14,6 +14,9 @@ for k in fdef.GetFeatureFamilies():
     fparams = FeatMaps.FeatMapParams()
     fmParams[k] = fparams
 
+# Module-level print flag - set from modrag.py
+print_flag = False
+
 def substitution_node(smiles_list: list[str]) -> (list[str], str, list):
   '''
     A simple substitution routine that looks for a substituent on a phenyl ring and

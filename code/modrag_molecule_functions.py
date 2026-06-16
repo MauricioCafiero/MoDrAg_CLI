@@ -6,6 +6,9 @@ import pubchempy as pcp
 from PIL import Image
 from collections import Counter
 
+# Module-level print flag - set from modrag.py
+print_flag = True
+
 def canonical_node(smiles: str) -> str:
   '''
     converts a SMILES string to a canonical form. This is useful for ensuring that
@@ -39,7 +42,8 @@ def name_node(smiles_list: list[str]) -> (list[str], str):
         name = res[0].iupac_name
         names.append(name)
         name_string += f'{smiles}: IUPAC molecule name: {name}\n'
-        print(smiles, name)
+        if print_flag:
+            print(smiles, name)
         syn_list = pcp.get_synonyms(res[0].cid)
         for alt_name in syn_list[0]['Synonym'][:5]:
             name_string += f'{smiles}: alternative or common name: {alt_name}\n'
@@ -98,14 +102,16 @@ def related_node(smiles_list: list[str]) -> (list[list[str]], str, list):
     try:
         res = pcp.get_compounds(smiles, "smiles", searchtype="similarity",listkey_count=50)
         related_string += f'The following molecules are similar to {smiles}: \n'
-        print('got related molecules with smiles')
+        if print_flag:
+            print('got related molecules with smiles')
 
         sub_smiles = []
 
         i = 0
         for compound in res:
             if i == 0:
-                print(compound.iupac_name)
+                if print_flag:
+                    print(compound.iupac_name)
                 i+=1
             sub_smiles.append(compound.smiles)
             related_string += f'Name: {compound.iupac_name}\n'

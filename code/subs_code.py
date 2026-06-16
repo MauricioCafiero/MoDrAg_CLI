@@ -2,6 +2,7 @@ from rdkit import Chem
 from rdkit.Chem import QED
 import re, random
 
+print_flag = False
 
 free_carbon_search_patterns = ['c[0-9]c', r'1c\[n', 'cc', r'c\[nH\]']
 free_carbon_insert_points = [2, 2, 1, 1]
@@ -93,8 +94,9 @@ def grow_cycle(best_smiles: str = 'c1ccccc1', substituents: list[str] = e_withdr
     Returns:
       total_list : a list of tuples containing the new SMILES strings
     '''
-    print('=============================================================================')
-    print(f"Starting grow cycle with best score {best_smiles}.")
+    if print_flag:
+        print('=============================================================================')
+        print(f"Starting grow cycle with best score {best_smiles}.")
   
     total_list = []
     for pattern, insert_point in zip(free_carbon_search_patterns, free_carbon_insert_points):
@@ -108,11 +110,14 @@ def grow_cycle(best_smiles: str = 'c1ccccc1', substituents: list[str] = e_withdr
                     try:
                         total_list.append(new_smiles)
                     except:
-                        print(f"Error substituting {new_smiles}")
+                        if print_flag:
+                            print(f"Error substituting {new_smiles}")
                     #print(f"{new_smiles}")
                 else:
-                    print(new_smiles, 'bad')
-    print('=============================================================================')
+                    if print_flag:
+                        print(new_smiles, 'bad')
+    if print_flag:
+        print('=============================================================================')
     return total_list
 
 def replace_groups(orig_smiles: str = 'c1ccccc1', new_substituents: list[str] = e_donate):
@@ -126,18 +131,21 @@ def replace_groups(orig_smiles: str = 'c1ccccc1', new_substituents: list[str] = 
     Returns:
       total_list: a list of tuples containing the new SMILES strings
     '''
-    print('=============================================================================')
-    print(f"Starting replace cycle with {orig_smiles}.")
+    if print_flag:
+        print('=============================================================================')
+        print(f"Starting replace cycle with {orig_smiles}.")
     best_smiles = orig_smiles
     #look in best_smiles for substituents in the substituents_to_replace list and replace them with substituents in the new_substituents list
     # create substituents_to_replace list by looking for c(\D\D*)c in best_smiles and extracting the D\D* part
     substituents_to_replace = re.findall(r"c\(\D\D*\)c", best_smiles)
-    print(f"Found substituents to replace: {substituents_to_replace}")
+    if print_flag:
+        print(f"Found substituents to replace: {substituents_to_replace}")
     
     total_list = []
     for old in substituents_to_replace:
         if old in orig_smiles:
-            print(f"Found {old} in {orig_smiles}")
+            if print_flag:
+                print(f"Found {old} in {orig_smiles}")
             for new in new_substituents:
                 new = f'c({new})c'
                 new_smiles = orig_smiles.replace(old, new)
@@ -146,11 +154,14 @@ def replace_groups(orig_smiles: str = 'c1ccccc1', new_substituents: list[str] = 
                     try:
                         total_list.append(new_smiles)
                     except:
-                        print(f"Error substituting {new_smiles}")
+                        if print_flag:
+                            print(f"Error substituting {new_smiles}")
                     #print(f"{new_smiles}")
                 else:
-                    print(new_smiles, 'bad')
+                    if print_flag:
+                        print(new_smiles, 'bad')
 
-    print('=============================================================================')
+    if print_flag:
+        print('=============================================================================')
     return total_list
 

@@ -11,6 +11,9 @@ from chembl_webresource_client.new_client import new_client
 from rcsbapi.search import TextQuery
 from dockstring import load_target
 
+# Module-level print flag - set from modrag.py
+print_flag = False
+
 def uniprot_node(protein_names: list[str], human_flag: bool = False) -> (list[str], str):
   '''
     This tool takes in the user requested protein and searches UNIPROT for matches.
@@ -41,7 +44,8 @@ def uniprot_node(protein_names: list[str], human_flag: bool = False) -> (list[st
       prot_df_raw = pd.read_csv(f'../scratch/{protein_name}_uniprot_ids.tsv', sep='\t')
       if human_flag:
         prot_df = prot_df_raw[prot_df_raw['Organism'] == "Homo sapiens (Human)"]
-        print(f"Found {len(prot_df)} Human proteins out of {len(prot_df_raw)} total proteins")
+        if print_flag:
+            print(f"Found {len(prot_df)} Human proteins out of {len(prot_df_raw)} total proteins")
       else:
         prot_df = prot_df_raw
 
@@ -89,14 +93,17 @@ def listbioactives_node(up_ids_list: list[str]) -> (list[int], list[str], str):
     try:
       target_info = targets.get(target_components__accession=up_id).only("target_chembl_id","organism", "pref_name", "target_type")
       target_info = pd.DataFrame.from_records(target_info)
-      print(target_info)
+      if print_flag:
+          print(target_info)
       if len(target_info) > 0:
-        print(f"Found info for Uniprot ID: {up_id}")
+        if print_flag:
+            print(f"Found info for Uniprot ID: {up_id}")
 
       chembl_ids = target_info['target_chembl_id'].tolist()
 
       chembl_ids = list(set(chembl_ids))
-      print(f"Found {len(chembl_ids)} unique ChEMBL IDs")
+      if print_flag:
+          print(f"Found {len(chembl_ids)} unique ChEMBL IDs")
 
       len_all_bioacts = []
       for chembl_id in chembl_ids:
@@ -145,9 +152,11 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
       #check if f'{chembl_id}_bioactives.csv' exists
       chembl_id = chembl_id.upper()
       if os.path.exists(f'../scratch/{chembl_id}_bioactives.csv'):
-        print(f'Found {chembl_id}_bioactives.csv')
+        if print_flag:
+            print(f'Found {chembl_id}_bioactives.csv')
         total_bioact_df = pd.read_csv(f'../scratch/{chembl_id}_bioactives.csv')
-        print(f"number of records: {len(total_bioact_df)}")
+        if print_flag:
+            print(f"number of records: {len(total_bioact_df)}")
       else:
 
         compounds = new_client.molecule
@@ -171,8 +180,9 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
         bioact_dict = {'chembl_ids' : chembl_ids, 'IC50s': ic50s}
         bioact_df = pd.DataFrame.from_dict(bioact_dict)
         bioact_df.drop_duplicates(subset=["chembl_ids"], keep= "last")
-        print(f"Number of records: {len(bioact_df)}")
-        print(bioact_df.shape)
+        if print_flag:
+            print(f"Number of records: {len(bioact_df)}")
+            print(bioact_df.shape)
 
         compounds_provider = compounds.filter(molecule_chembl_id__in=bioact_df["chembl_ids"].to_list()).only(
             "molecule_chembl_id",
@@ -190,10 +200,12 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
                 if record['molecule_structures']['canonical_smiles']:
                     smile = record['molecule_structures']['canonical_smiles']
                 else:
-                    print("No canonical smiles")
+                    if print_flag:
+                        print("No canonical smiles")
                     smile = None
             else:
-                print('no structures')
+                if print_flag:
+                    print('no structures')
                 smile = None
             smiles_list.append(smile)
 
@@ -201,14 +213,17 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
         new_df = pd.DataFrame.from_dict(new_dict)
 
         total_bioact_df = pd.merge(bioact_df, new_df, left_on='chembl_ids', right_on='chembl_ids_2')
-        print(f"number of records: {len(total_bioact_df)}")
+        if print_flag:
+            print(f"number of records: {len(total_bioact_df)}")
 
         total_bioact_df.drop_duplicates(subset=["chembl_ids"], keep= "last")
-        print(f"number of records after removing duplicates: {len(total_bioact_df)}")
+        if print_flag:
+            print(f"number of records after removing duplicates: {len(total_bioact_df)}")
 
         total_bioact_df.dropna(axis=0, how='any', inplace=True)
         total_bioact_df.drop(["chembl_ids_2"],axis=1,inplace=True)
-        print(f"number of records after dropping Null values: {len(total_bioact_df)}")
+        if print_flag:
+            print(f"number of records after dropping Null values: {len(total_bioact_df)}")
 
         total_bioact_df.sort_values(by=["IC50s"],inplace=True)
 
@@ -366,12 +381,14 @@ def pdb_node(test_pdb_list: list[str]) -> (list[str], str):
             j = 1
             if parts[1].strip() in ['2','3','4','5','6','7','8','9']:
               j = 2
-            print(parts[j])
+            if print_flag:
+                print(parts[j])
             if parts[j] not in other_molecules:
               other_molecules[parts[j]] = []
             other_molecules[parts[j]].extend(parts[2:])
         except:
-          print('Blank line')
+          if print_flag:
+              print('Blank line')
 
         chains_ol = {}
         for chain in chains:
@@ -383,7 +400,8 @@ def pdb_node(test_pdb_list: list[str]) -> (list[str], str):
       for chain in chains_ol:
         total_pdb_string += f"Chain {chain}: {''.join(chains_ol[chain])} \n"
         sub_seqs.append(''.join(chains_ol[chain]))
-        print(f"Chain {chain}: {''.join(chains_ol[chain])}")
+        if print_flag:
+            print(f"Chain {chain}: {''.join(chains_ol[chain])}")
       total_pdb_string += f"Ligands in PDB ID {test_pdb}.\n"
       for mol in other_molecules:
         total_pdb_string += f"Molecule {mol}: {''.join(other_molecules[mol])} \n"
@@ -505,7 +523,8 @@ def target_node(search_descriptors: list[str]):
           if hit['entity'] == 'disease':
             disease_list.append(hit['id'])
     else:
-      print('Could not find results.')
+      if print_flag:
+          print('Could not find results.')
 
     if len(disease_list) > 0:
       q = requests.post(base_url, json={"query": target_query_string, "variables": {"efo_id": disease_list[0]}})
@@ -528,7 +547,12 @@ def target_node(search_descriptors: list[str]):
 
 def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], str):
   '''
-    Docking tool: uses dockstring to dock the molecule into the protein
+    Docking tool: uses dockstring to dock the molecule into the protein. The query proteins can 
+    be any of the following list: IGF1R,JAK2,KIT,LCK,MAPK14,MAPKAPK2,MET,PTK2,PTPN1,SRC,ABL1,AKT1,
+    AKT2,CDK2,CSF1R,EGFR,KDR,MAPK1,FGFR1,ROCK1,MAP2K1,PLK1,HSD11B1,PARP1,PDE5A,PTGS2,ACHE,MAOB,CA2,
+    GBA,HMGCR,NOS1,REN,DHFR,ESR1,ESR2,NR3C1,PGR,PPARA,PPARD,PPARG,AR,THRB,ADAM17,F10,F2,BACE1,CASP3,
+    MMP13,DPP4,ADRB1,ADRB2,DRD2,DRD3,ADORA2A,CYP2C9,CYP3A4,HSP90AA1
+    
     Args:
       smiles_list: the SMILES strings of the molecules to dock
       protein: the protein to dock into
@@ -539,9 +563,11 @@ def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], st
   print("docking tool")
   print('===================================================')
   cpuCount = os.cpu_count()
-  print(f"Number of CPUs: {cpuCount}")
+  if print_flag:
+      print(f"Number of CPUs: {cpuCount}")
 
-  print(f'query_protein: {query_protein}')
+  if print_flag:
+      print(f'query_protein: {query_protein}')
 
   scores_list = []
   scores_string = 'Docking below performed with AutoDock Vina on protein structures from the DUDE database.\n'
@@ -550,13 +576,15 @@ def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], st
     try:
       query_smiles = query_smiles.replace('.[Na+]','').replace('.[Na+]','').replace('.[K+]','').replace('[K+].','').replace('.[Cl-]','').replace('[Cl-].','')
       target = load_target(query_protein)
-      print("===============================================")
-      print(f"Docking molecule with {cpuCount} cpu cores.")
+      if print_flag:
+          print("===============================================")
+          print(f"Docking molecule with {cpuCount} cpu cores.")
       score, aux = target.dock(query_smiles, num_cpus = cpuCount)
       scores_list.append(score)
       mol = aux['ligand']
-      print(f"Docking score: {score}")
-      print("===============================================")
+      if print_flag:
+          print(f"Docking score: {score}")
+          print("===============================================")
       atoms_list = ""
       template = mol
       molH = Chem.AddHs(mol)
@@ -574,7 +602,8 @@ def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], st
       scores_string += f"=========================================================\n"
 
     except:
-      print(f"Molecule {query_smiles} could not be docked!")
+      if print_flag:
+          print(f"Molecule {query_smiles} could not be docked!")
       scores_string = 'Could not dock!'
       scores_list.append(None)
 

@@ -8,12 +8,22 @@ from ollama import Client as ollama_client
 from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed
+import modrag_protein_functions
+import modrag_molecule_functions
+import modrag_property_functions
+import subs_code
 
 # get the print flag from the command line arguments, if they exist, otherwise set it to False
 if len(sys.argv) > 1 and sys.argv[1] == '--print':
     print_flag = True
 else:
     print_flag = False
+
+# Set print_flag in all imported modules
+modrag_protein_functions.print_flag = print_flag
+modrag_molecule_functions.print_flag = print_flag
+modrag_property_functions.print_flag = print_flag
+subs_code.print_flag = print_flag
 
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
@@ -31,7 +41,11 @@ model = models[-1]
 
 sys_message = f'''
 You are a drug discovery assistant names Modrag. You have access to the 
-following tools: {', '.join([tool.__name__ for tool in tools])}.
+following tools: {', '.join([tool.__name__ for tool in tools])}. Answer the 
+user questions using these tools and your knowledge of drug discovery, 
+chemistry, and biology. You may expand on the tool results with your own 
+knowledge, but do not make up any information and be concise. If you do not 
+know the answer, say "I don't know" and do not make up an answer.
 '''
 
 global messages
@@ -39,6 +53,7 @@ messages = [{'role': 'system', 'content': sys_message}]
 
 def start_chat():
   '''
+  Initializes a new chat session by resetting the chat history, reasoning, and messages.
   '''
   global chat_history, messages, reasoning
   chat_history = []
@@ -47,6 +62,8 @@ def start_chat():
 
 def chat_turn(prompt: str):
   '''
+  Handles a single turn of the chat by sending the user's prompt to the Ollama API,
+  processing the response, and executing any tool calls if present.
   '''
   global chat_history, messages, reasoning
   
@@ -93,7 +110,8 @@ def chat_turn(prompt: str):
       if response.message.tool_calls:
         for tc in response.message.tool_calls:
           if tc.function.name in available_functions:
-            print(f"Calling {tc.function.name} with arguments {tc.function.arguments}")
+            if print_flag:
+              print(f"Calling {tc.function.name} with arguments {tc.function.arguments}")
             result = available_functions[tc.function.name](**tc.function.arguments)
             if print_flag:
               print(f"Result: {result}")
