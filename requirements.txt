@@ -1,2 +1,8 @@
 rdkit
 pubchempy
+pandas
+requests
+chembl_webresource_client
+rcsb-api
+dockstring
+openbabel-wheel
