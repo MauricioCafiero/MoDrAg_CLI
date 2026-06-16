@@ -99,7 +99,7 @@ MoDrAg_CLI/
 │   ├── modrag_protein_functions.py    # Protein and docking tools
 │   ├── subs_code.py                   # Substitution helper functions
 │   ├── tool_tests.py                  # Basic test suite
-│   ├── single_test.py                 # Comprehensive test suite
+│   ├── protein_test.py                # Comprehensive test suite for protein functions
 │   └── modrag-env/                    # Python virtual environment
 ├── data/                              # Data files
 ├── scratch/                           # Temporary files and outputs
