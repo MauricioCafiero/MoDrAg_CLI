@@ -1,16 +1,25 @@
 from modrag_molecule_functions import *
 from modrag_property_functions import *
+from modrag_protein_functions import *
 
-# Test 1: name_node() - Convert SMILES to molecule names
+# Test predict_node with CHEMBL217
 print("=" * 60)
-print("TEST 1: name_node() - SMILES to Names")
+print("TEST: predict_node() - Predict IC50 with CHEMBL217")
 print("=" * 60)
 try:
-    smiles_input = ['CCO', 'CCN', 'CCC']
-    names, name_string, _ = name_node(smiles_input)
+    # Test SMILES - using some common drug-like molecules
+    smiles_input = ['CC(=O)Oc1ccccc1C(=O)O', 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C', 'CCO']
+    chembl_id = 'CHEMBL217'
+    
     print("Input SMILES:", smiles_input)
-    print("Output Names:", names)
-    print(name_string)
-    print("✓ name_node test passed\n")
+    print("ChEMBL ID:", chembl_id)
+    print()
+    
+    preds, preds_string, preds_images = predict_node(smiles_input, chembl_id)
+    
+    print("Predicted IC50 values:", preds)
+    print("\nPrediction results:")
+    print(preds_string[:600] if len(preds_string) > 600 else preds_string)
+    print("\n✓ predict_node test passed\n")
 except Exception as e:
-    print(f"✗ name_node test failed: {e}\n")
+    print(f"✗ predict_node test failed: {e}\n")

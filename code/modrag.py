@@ -2,10 +2,10 @@ import os
 from PIL import Image
 from collections import Counter
 from typing import Annotated, TypedDict
-import time, sys
+import time, sys, textwrap
 from ollama import Client as ollama_client
 
-from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node
+from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed
 import modrag_protein_functions
@@ -27,7 +27,7 @@ subs_code.print_flag = print_flag
 
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed]
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -43,7 +43,7 @@ sys_message = f'''
 You are a drug discovery assistant names Modrag. You have access to the 
 following tools: {', '.join([tool.__name__ for tool in tools])}. Answer the 
 user questions using these tools and your knowledge of drug discovery, 
-chemistry, and biology. You may expand on the tool results with your own 
+chemistry, and biology. Add some enriching information to the tool results from your own 
 knowledge, but do not make up any information and be concise. If you do not 
 know the answer, say "I don't know" and do not make up an answer.
 '''
@@ -86,7 +86,8 @@ def chat_turn(prompt: str):
     'substitution_node': substitution_node,
     'pharmfeature_node': pharmfeature_node,
     'lipinski_node': lipinski_node,
-    'get_qed': get_qed
+    'get_qed': get_qed,
+    'predict_node': predict_node
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -97,7 +98,7 @@ def chat_turn(prompt: str):
           messages=messages,
           tools=[uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed],
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node],
           think=True,
       )
       messages.append(response.message)
@@ -149,16 +150,29 @@ header_string = f'''
 
 print(header_string)
 
-next_prompt = input("What can I help with today? > ")
-_, _, response_content = chat_turn(next_prompt)
-print("Response: ", response_content)
+next_prompt = input("\033[1;36mWhat can I help with today? > \033[0m")
+print('')
+if next_prompt == 'quit':
+  print("\033[1;35mResponse > \033[0mGoodbye!")
+else:
+  start_time = time.time()
+  _, _, response_content = chat_turn(next_prompt)
+  end_time = time.time()
+  time_for_inf = (end_time - start_time) / 60
+  wrapped = textwrap.fill(response_content, width=80)
+  print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m\n", wrapped)
 
 while next_prompt != 'quit':
-  next_prompt = input("What else can I help with? > ")
+  print('')
+  next_prompt = input("\033[1;36mWhat else can I help with? > \033[0m")
   if next_prompt == 'quit':
+    print("\033[1;35mResponse > \033[0mGoodbye!")
     break
   else:
+    start_time = time.time()
     _, _, response_content = chat_turn(next_prompt)
-    print("Response: ", response_content)
-
-print("Response: ", response_content)
+    end_time = time.time()
+    time_for_inf = (end_time - start_time) / 60
+    wrapped = textwrap.fill(response_content, width=80)
+    print('')
+    print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m\n", wrapped)

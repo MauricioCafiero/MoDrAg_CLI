@@ -4,10 +4,21 @@ import os
 import itertools
 import json
 from rdkit import Chem
-from rdkit.Chem import AllChem, QED
+from rdkit.Chem import AllChem, QED, Descriptors
 from rdkit.Chem import Draw
 from rdkit.Chem.Draw import MolsToGridImage
-from chembl_webresource_client.new_client import new_client
+from lightgbm import LGBMRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from rdkit import Chem
+import numpy as np
+
+try:
+  from chembl_webresource_client.new_client import new_client
+  chembl_flag = True
+except:
+  print("Failed to import chembl_webresource_client. Some functionality may be limited.")
+  chembl_flag = False
 from rcsbapi.search import TextQuery
 from dockstring import load_target
 
@@ -80,6 +91,9 @@ def listbioactives_node(up_ids_list: list[str]) -> (list[int], list[str], str):
   '''
   print("List bioactives tool")
   print('===================================================')
+  if not chembl_flag:
+    print("ChEMBL client not available at this time")
+    return [], "ChEMBL client not available.", []
 
   total_bioacts_list = []
   total_chembl_ids_list = []
@@ -142,6 +156,9 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
   '''
   print("Get bioactives tool")
   print('===================================================')
+  if not chembl_flag:
+    print("ChEMBL client not available at this time")
+    return [], "ChEMBL client not available.", None
 
   bioactives_list = []
   bioactives_images = []
@@ -472,6 +489,8 @@ def target_node(search_descriptors: list[str]):
     targets_string (str): String of targets
     None
   '''
+  print("Open Targets tool")
+  print('===================================================')
   base_url = "https://api.platform.opentargets.org/api/v4/graphql"
 
   disease_query_string = """
@@ -552,7 +571,7 @@ def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], st
     AKT2,CDK2,CSF1R,EGFR,KDR,MAPK1,FGFR1,ROCK1,MAP2K1,PLK1,HSD11B1,PARP1,PDE5A,PTGS2,ACHE,MAOB,CA2,
     GBA,HMGCR,NOS1,REN,DHFR,ESR1,ESR2,NR3C1,PGR,PPARA,PPARD,PPARG,AR,THRB,ADAM17,F10,F2,BACE1,CASP3,
     MMP13,DPP4,ADRB1,ADRB2,DRD2,DRD3,ADORA2A,CYP2C9,CYP3A4,HSP90AA1
-    
+
     Args:
       smiles_list: the SMILES strings of the molecules to dock
       protein: the protein to dock into
@@ -608,3 +627,178 @@ def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], st
       scores_list.append(None)
 
   return scores_list, scores_string, None
+
+def rdkit_featurize(smiles_list: list, target_list: list):
+  '''
+    Takes a list of SMILES strings and creates features using the RDKit set of
+    descriptors.
+
+      Args:
+        smiles_list: List of SMILES strings to featurize
+        target_list: List of the ground truth values for each molecule
+      Returns:
+        X: 2D list of features (rows are molecules, columns are features)
+        y: list of target values
+        mols: list of RDKit mol objects
+        legend: list of SMILES strings (should be identical to input list,
+                unless a molecule could not be featurized, in which case that molecule
+                is left out)
+  '''
+  if target_list is None:
+    target_list = [0.0] * len(smiles_list)
+
+  X = []
+  mols = []
+  legend = []
+  y = []
+  add_flag = True
+  for i,smile in enumerate(smiles_list):
+    try:
+      mol = Chem.MolFromSmiles(smile)
+      dictionary_descriptors = Chem.Descriptors.CalcMolDescriptors(mol)
+      temp_vec = []
+      for key in dictionary_descriptors:
+        temp_vec.append(dictionary_descriptors[key])
+        add_flag = True
+      X.append(temp_vec)
+      mols.append(mol)
+      legend.append(smile)
+      y.append(target_list[i])
+    except:
+      if print_flag:
+        print(f"Could not featurize molecule {i}")
+
+  if print_flag:
+    print(f"Total number of molecules: {len(X)}")
+  if print_flag:
+    print(f"Total number of descriptors per molecule: {len(X[0])}")
+
+  return X, y, legend
+
+def predict_node(smiles_list_in: list[str], chembl_id: str) -> (list[float],str,list):
+  '''
+    uses the current_bioactives.csv file from the get_bioactives node to fit the
+    Light GBM model and predict the IC50 for the current smiles.
+      Args:
+        smiles_list: the SMILES strings of the molecules to predict
+        chembl_id: the chembl ID to query
+      Returns:
+        preds: a list of predicted IC50 values for the input SMILES
+        preds_string: a string containing the predicted IC50 values for the input SMILES
+        preds_images: a list of images for each predicted molecule (currently not implemented)
+  '''
+  print("Predict Tool")
+  print('===================================================')
+
+  # if f'{chembl_id}_bioactives.csv' does not exist, call the bioactives node
+  if not os.path.exists(f'../scratch/{chembl_id}_bioactives.csv'):
+    _, _, _ = getbioactives_node([chembl_id])
+  
+  try:
+    chembl_id = chembl_id.upper()
+    df = pd.read_csv(f'../scratch/{chembl_id}_bioactives.csv')
+    #if length of the dataframe is over 2000, take a random sample of 2000 points
+    if len(df) > 2000:
+      df = df.sample(n=2000, random_state=42)
+
+    y_raw = df["IC50s"].to_list()
+    smiles_list = df["SMILES"].to_list()
+    ions_to_clean = ["[Na+].",".[Na+]","[Cl-].",".[Cl-]","[K+].",".[K+]"]
+    Xa = []
+    y = []
+    for smile, value in zip(smiles_list, y_raw):
+      for ion in ions_to_clean:
+        smile = smile.replace(ion,"")
+      y.append(np.log10(value))
+      Xa.append(smile)
+
+    if print_flag:
+      print(f"Number of molecules: {len(Xa)}")
+
+   
+    f, y, Xa = rdkit_featurize(Xa, y)
+    f = np.array(f)
+
+    nan_indicies = np.isnan(f)
+    bad_rows = []
+    for i, row in enumerate(nan_indicies):
+        for item in row:
+            if item == True:
+                if i not in bad_rows:
+                    if print_flag:
+                      print(f"Row {i} has a NaN.")
+                    bad_rows.append(i)
+
+    if print_flag:
+      print(f"Old dimensions are: {f.shape}.")
+
+    for j,i in enumerate(bad_rows):
+        k=i-j
+        f = np.delete(f,k,axis=0)
+        y = np.delete(y,k,axis=0)
+        Xa = np.delete(Xa,k,axis=0)
+        if print_flag:
+          print(f"Deleting row {k} from arrays.")
+
+    if print_flag:
+      print(f"New dimensions are: {f.shape}")
+    if f.shape[0] != len(y) or f.shape[0] != len(Xa):
+      raise ValueError("Number of rows in X and y do not match.")
+
+    # Create feature names for the model
+    feature_names = [f"descriptor_{i}" for i in range(f.shape[1])]
+    
+    X_train, X_test, y_train, y_test = train_test_split(f, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    # Convert to DataFrames with feature names
+    X_train = pd.DataFrame(X_train, columns=feature_names)
+    X_test = pd.DataFrame(X_test, columns=feature_names)
+
+    model = LGBMRegressor(metric='rmse', max_depth = 50, verbose = -1, num_leaves = 31,
+                          feature_fraction = 0.8, min_data_in_leaf = 20)
+    modelname = "LightGBM Regressor"
+    model.fit(X_train, y_train)
+
+    train_score = model.score(X_train,y_train)
+    if print_flag:
+      print(f"score for training set: {train_score:.3f}")
+
+    valid_score = model.score(X_test, y_test)
+    if print_flag:
+      print(f"score for validation set: {valid_score:.3f}")
+  except:
+    return [], 'Model training failed, unable to predict.', None
+
+  preds = []
+  preds_string = ''
+
+  for smiles in smiles_list_in:
+    if print_flag:
+      print(f"in predict node, smiles: {smiles}")
+    idx = 0
+    try:
+      for ion in ions_to_clean:
+        smiles = smiles.replace(ion,"")
+      test_feat, _, _ = rdkit_featurize([smiles], None)
+      test_feat = scaler.transform(test_feat)
+      # Convert to DataFrame with same feature names used during training
+      test_feat = pd.DataFrame(test_feat, columns=feature_names)
+      prediction = model.predict(test_feat)
+      test_ic50 = 10**(prediction[0])
+      if print_flag:
+        print(f"Predicted IC50 for {smiles}: {test_ic50}")
+      preds_string += f"The predicted IC50 value for {smiles} is : {test_ic50:.3f} nM.\n"
+      
+      preds.append(test_ic50)
+      idx+=1
+    except:
+      preds.append(None)
+      preds_string += f"The prediction for {smiles} failed.\n"
+
+  preds_string += f"The Bioactive data was fitted with the LightGMB model, using RDKit descriptors. The training score \
+was {train_score:.3f} and the testing score was {valid_score:.3f}. "
+
+  return preds, preds_string, None

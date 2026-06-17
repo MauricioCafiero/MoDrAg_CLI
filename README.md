@@ -28,6 +28,7 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 - **Find PDB ID Node**: Search for PDB structures matching protein names
 - **Target Node**: Find drug targets associated with diseases (Open Targets)
 - **Docking Node**: Perform molecular docking using AutoDock Vina
+- **Predict Node**: Predict IC50 values for molecules using LightGBM-trained models
 
 ## Installation
 
@@ -74,18 +75,34 @@ cd code
 python modrag.py
 ```
 
-The CLI will start and prompt you for commands related to drug discovery tasks.
+The CLI will start with a colorful header and prompt you for commands related to drug discovery tasks.
+
+**Features:**
+- Color-coded prompts (light blue for input, purple for responses)
+- Response text wrapped to 80 characters per line for readability
+- Inference time tracking showing how long each response takes (in minutes)
+- Debug output control via `--print` flag
+
+For verbose debugging output:
+```bash
+python modrag.py --print
+```
 
 ### Running Tests
 
-Simple test suite:
+Basic test suite for molecular and property tools:
 ```bash
 python tool_tests.py
 ```
 
-Comprehensive test with all proteins tools:
+Comprehensive test with all protein tools:
 ```bash
-python proteins_test.py
+python single_test.py
+```
+
+Test the predict node with CHEMBL217:
+```bash
+python single_test.py  # Includes predict_node test
 ```
 
 ## Project Structure
@@ -153,6 +170,10 @@ print(target_string)
 # Dock molecules
 scores, docking_string, _ = docking_node(['CCO'], 'ADRB2')
 print(docking_string)
+
+# Predict IC50 values
+preds, pred_string = predict_node(['CCO', 'c1ccccc1'], 'CHEMBL217')
+print(pred_string)
 ```
 
 ## Data Sources
