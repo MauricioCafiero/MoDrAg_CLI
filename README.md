@@ -46,6 +46,9 @@ The project requires the following packages:
 - `pillow` - Image processing
 - `dockstring` - Molecular docking
 - `rcsbapi` - RCSB PDB API access
+- `scikit-learn` - Machine learning utilities
+- `lightgbm` - Gradient boosting for IC50 prediction
+- `openbabel-wheel` - Chemical structure conversion utilities
 
 ### Setup
 
@@ -63,7 +66,12 @@ source code/modrag-env/bin/activate
 
 3. Install dependencies:
 ```bash
-pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi
+pip install -r requirements.txt
+```
+
+Or manually install:
+```bash
+pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi scikit-learn lightgbm openbabel-wheel
 ```
 
 ## Usage

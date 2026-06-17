@@ -6,3 +6,5 @@ chembl_webresource_client
 rcsb-api
 dockstring
 openbabel-wheel
+scikit-learn
+lightgbm
