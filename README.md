@@ -75,10 +75,29 @@ Or manually install:
 pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi scikit-learn lightgbm openbabel-wheel rich
 ```
 
+4. (Optional) Setup shell alias for easy access:
+```bash
+bash setup_alias.sh
+```
+
+This script will automatically:
+- Detect your current shell (zsh or bash)
+- Find the absolute path to your MoDrAg_CLI directory
+- Create a `modrag` alias in your shell config file (`~/.zshrc` for zsh or `~/.bashrc` for bash)
+- Source the config file to activate the alias immediately
+
+After this, you can run `modrag` from anywhere in your terminal instead of navigating to the code directory.
+
 ## Usage
 
 ### Running the CLI
 
+**Option 1: With alias (recommended)** - If you ran the setup script:
+```bash
+modrag
+```
+
+**Option 2: Without alias:**
 ```bash
 cd code
 python modrag.py
@@ -94,7 +113,12 @@ The CLI will start with a colorful header and prompt you for commands related to
 - Automatic image generation and notification system
 - Debug output control via `--print` flag
 
-For verbose debugging output:
+For verbose debugging output with the alias:
+```bash
+modrag --print
+```
+
+Or without the alias:
 ```bash
 python modrag.py --print
 ```
