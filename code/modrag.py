@@ -2,12 +2,16 @@ import os
 from PIL import Image
 from collections import Counter
 from typing import Annotated, TypedDict
-import time, sys, textwrap
+import time, sys
 from ollama import Client as ollama_client
+from rich.console import Console
+from rich.markdown import Markdown
 
 from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed
+
+console = Console(width=80)
 import modrag_protein_functions
 import modrag_molecule_functions
 import modrag_property_functions
@@ -155,24 +159,47 @@ print('')
 if next_prompt == 'quit':
   print("\033[1;35mResponse > \033[0mGoodbye!")
 else:
+  # Get image modification time before
+  img_path = '../images/chat_image.png'
+  img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+  
   start_time = time.time()
   _, _, response_content = chat_turn(next_prompt)
   end_time = time.time()
+  
+  # Check if image was modified
+  img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+  
   time_for_inf = (end_time - start_time) / 60
-  wrapped = textwrap.fill(response_content, width=80)
-  print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m\n", wrapped)
+  print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
+  console.print(Markdown(response_content))
+  
+  if img_mtime_after and img_mtime_before != img_mtime_after:
+    print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")
 
 while next_prompt != 'quit':
   print('')
   next_prompt = input("\033[1;36mWhat else can I help with? > \033[0m")
+  print('')
   if next_prompt == 'quit':
     print("\033[1;35mResponse > \033[0mGoodbye!")
     break
   else:
+    # Get image modification time before
+    img_path = '../images/chat_image.png'
+    img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+    
     start_time = time.time()
     _, _, response_content = chat_turn(next_prompt)
     end_time = time.time()
+    
+    # Check if image was modified
+    img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+    
     time_for_inf = (end_time - start_time) / 60
-    wrapped = textwrap.fill(response_content, width=80)
     print('')
-    print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m\n", wrapped)
+    print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
+    console.print(Markdown(response_content))
+    
+    if img_mtime_after and img_mtime_before != img_mtime_after:
+      print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")

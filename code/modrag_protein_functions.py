@@ -261,6 +261,10 @@ def getbioactives_node(chembl_ids_list: list[str]) -> (list[str], str):
       mols = [Chem.MolFromSmiles(smile) for smile in total_bioact_df['SMILES'].to_list()]
       legends = [f'IC50: {ic50}' for ic50 in total_bioact_df['IC50s'].to_list()]
       img = MolsToGridImage(mols, molsPerRow=5, legends=legends, subImgSize=(200,200))
+      # Save image to chat location
+      if not os.path.exists('../images'):
+        os.makedirs('../images')
+      img.save('../images/chat_image.png')
       bioactives_images.append(img)
       bioactives_list.append(bioact_tuple_list)
     except: 

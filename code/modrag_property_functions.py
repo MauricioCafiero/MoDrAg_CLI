@@ -59,6 +59,10 @@ def substitution_node(smiles_list: list[str]) -> (list[str], str, list):
 
         mols = [Chem.MolFromSmiles(smile) for smile in new_smiles]
         img = Draw.MolsToGridImage(mols,legends=new_smiles, molsPerRow=4, subImgSize=(250, 250))
+        # Save image to chat location
+        if not os.path.exists('../images'):
+          os.makedirs('../images')
+        img.save('../images/chat_image.png')
         total_sub_images.append(img)
     except:
         total_sub_smiles_list.append([])

@@ -125,6 +125,10 @@ def related_node(smiles_list: list[str]) -> (list[list[str]], str, list):
 
         total_similar_list.append(sub_smiles)
         img = Draw.MolsToGridImage(sub_mols, legends=legend, molsPerRow=4, subImgSize=(250, 250))
+        # Save image to chat location
+        if not os.path.exists('../images'):
+          os.makedirs('../images')
+        img.save('../images/chat_image.png')
         #pic = img.data
         all_images.append(img)
     except:
@@ -172,5 +176,9 @@ def structure_node(smiles_list: list[str]) -> (list[str], str, list):
     all_mols.append(molH)
   
   img = Draw.MolsToGridImage(all_mols, molsPerRow=3, subImgSize=(250, 250))
+  # Save image to chat location
+  if not os.path.exists('../images'):
+    os.makedirs('../images')
+  img.save('../images/chat_image.png')
 
   return all_structures, output_string, [img]

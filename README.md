@@ -43,12 +43,13 @@ The project requires the following packages:
 - `pandas` - Data manipulation
 - `requests` - HTTP requests
 - `chembl-webresource-client` - ChEMBL API access
-- `pillow` - Image processing
+- `pillow` - Image processing and visualization
 - `dockstring` - Molecular docking
 - `rcsbapi` - RCSB PDB API access
 - `scikit-learn` - Machine learning utilities
 - `lightgbm` - Gradient boosting for IC50 prediction
 - `openbabel-wheel` - Chemical structure conversion utilities
+- `rich` - Rich text and markdown rendering for terminal output
 
 ### Setup
 
@@ -71,7 +72,7 @@ pip install -r requirements.txt
 
 Or manually install:
 ```bash
-pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi scikit-learn lightgbm openbabel-wheel
+pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi scikit-learn lightgbm openbabel-wheel rich
 ```
 
 ## Usage
@@ -89,12 +90,32 @@ The CLI will start with a colorful header and prompt you for commands related to
 - Color-coded prompts (light blue for input, purple for responses)
 - Response text wrapped to 80 characters per line for readability
 - Inference time tracking showing how long each response takes (in minutes)
+- Rich markdown rendering for formatted response text
+- Automatic image generation and notification system
 - Debug output control via `--print` flag
 
 For verbose debugging output:
 ```bash
 python modrag.py --print
 ```
+
+#### Rich Text Rendering
+Responses are rendered using the Rich library with proper markdown formatting. This ensures:
+- Proper text wrapping at 80 characters per line
+- Markdown syntax support (bold, italics, lists, code blocks)
+- Better readability for complex information
+
+#### Image Generation and Notifications
+Several tools automatically generate molecular structure images which are saved to `../images/chat_image.png`. When an image is generated during a chat response, a notification appears:
+```
+Note: Image available at ../images/chat_image.png
+```
+
+**Functions that generate images:**
+- **Related Node** (`modrag_molecule_functions.py`): Generates grid image of similar molecules
+- **Structure Node** (`modrag_molecule_functions.py`): Generates grid image of 3D molecular structures
+- **Substitution Node** (`modrag_property_functions.py`): Generates grid image of newly substituted molecules
+- **Get Bioactives Node** (`modrag_protein_functions.py`): Generates grid image of bioactive molecules with IC50 values
 
 ### Running Tests
 
@@ -202,11 +223,15 @@ print(pred_string)
 ## Output Files
 
 The tools generate several types of output files:
-- `structure_output.png` - 3D molecular structures
-- `substitution_output.png` - Novel substituted molecules
-- `bioactives_output.png` - Bioactive molecule structures
+
+**Images:**
+- `../images/chat_image.png` - Centralized location for all molecular structure visualizations (updated each time a molecule image is generated)
+
+**Data Files:**
 - `*_uniprot_ids.tsv` - UNIPROT search results
 - `*_bioactives.csv` - Bioactive molecule data with IC50 values
+
+**Note:** Image generation functions automatically save to the centralized `chat_image.png` location with a system notification when new images are created during chat interactions.
 
 ## Contributing
 
