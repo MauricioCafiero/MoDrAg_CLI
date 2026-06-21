@@ -4,8 +4,8 @@ import re, random
 
 print_flag = False
 
-free_carbon_search_patterns = ['c[0-9]c', r'1c\[n', 'cc', r'c\[nH\]']
-free_carbon_insert_points = [2, 2, 1, 1]
+free_carbon_search_patterns = ['c[0-9]c', r'1c\[n', 'cc', r'c\[nH\]', r'CC']
+free_carbon_insert_points = [2, 2, 1, 1, 1]
 
 e_withdraw = [
     'I',              #iodo
@@ -138,6 +138,8 @@ def replace_groups(orig_smiles: str = 'c1ccccc1', new_substituents: list[str] = 
     #look in best_smiles for substituents in the substituents_to_replace list and replace them with substituents in the new_substituents list
     # create substituents_to_replace list by looking for c(\D\D*)c in best_smiles and extracting the D\D* part
     substituents_to_replace = re.findall(r"c\(\D\D*\)c", best_smiles)
+    # add to substituents to replace with the C(\D\D*)C motif
+    substituents_to_replace += re.findall(r"C\(\D\D*\)C", best_smiles)
     if print_flag:
         print(f"Found substituents to replace: {substituents_to_replace}")
     
@@ -147,7 +149,10 @@ def replace_groups(orig_smiles: str = 'c1ccccc1', new_substituents: list[str] = 
             if print_flag:
                 print(f"Found {old} in {orig_smiles}")
             for new in new_substituents:
-                new = f'c({new})c'
+                if 'c(' in old:
+                    new = f'c({new})c'
+                elif 'C(' in old:
+                    new = f'C({new})C'
                 new_smiles = orig_smiles.replace(old, new)
                 mol = Chem.MolFromSmiles(new_smiles)
                 if mol != None:

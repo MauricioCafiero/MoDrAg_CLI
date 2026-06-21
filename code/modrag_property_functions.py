@@ -19,8 +19,11 @@ print_flag = False
 
 def substitution_node(smiles_list: list[str]) -> (list[str], str, list):
   '''
-    A simple substitution routine that looks for a substituent on a phenyl ring and
-    substitutes different fragments in that location. Returns a list of novel molecules and their
+    A simple substitution routine that performs three types of subsitutions:
+    1. placing a substituent on a free carbon on a ring
+    2. replacing an existing substituent on a ring with a new one 
+    3. placing a substituent on a free carbon in an SP3 chain.
+    Returns a list of novel molecules and their
     QED score (1 is most drug-like, 0 is least drug-like).
 
       Args:
