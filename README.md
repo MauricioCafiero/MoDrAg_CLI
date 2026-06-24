@@ -19,6 +19,7 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 - **Substitution Node**: Generate novel molecules through strategic substitution and ring growing
 - **Lipinski Node**: Calculate drug-like properties (QED, MW, LogP, HBA, HBD, PSA, etc.)
 - **Pharmacophore Feature Node**: Analyze and compare pharmacophore features between molecules
+- **Similarity Node**: Calculate Tanimoto similarity between reference and query molecules using Morgan fingerprints
 
 ### Protein Tools
 - **UNIPROT Node**: Search UNIPROT for protein information and IDs
@@ -140,6 +141,7 @@ Note: Image available at ../images/chat_image.png
 - **Structure Node** (`modrag_molecule_functions.py`): Generates grid image of 3D molecular structures
 - **Substitution Node** (`modrag_property_functions.py`): Generates grid image of newly substituted molecules
 - **Get Bioactives Node** (`modrag_protein_functions.py`): Generates grid image of bioactive molecules with IC50 values
+- **Similarity Node** (`modrag_property_functions.py`): Generates grid image of similar molecules based on Morgan fingerprint comparison
 
 ### Running Tests
 
@@ -148,7 +150,7 @@ Basic test suite for molecular and property tools:
 python tool_tests.py
 ```
 
-Comprehensive test with all protein tools:
+Tests a single tool:
 ```bash
 python single_test.py
 ```
@@ -260,6 +262,15 @@ The tools generate several types of output files:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Adding New Tools
+For detailed instructions on integrating new tool functions (nodes) into MoDrAg, refer to [NODE_INTEGRATION_SKILLS.md](code/NODE_INTEGRATION_SKILLS.md). This guide covers:
+- Preparation and dependency auditing
+- Code refactoring and migration patterns
+- Chatbot registration and configuration
+- Verification and testing procedures
+
+**Note:** The NODE_INTEGRATION_SKILLS.md file is a standardized template that can be passed to any coding agent to ensure consistent tool integration following established project patterns and conventions.
 
 ## License
 

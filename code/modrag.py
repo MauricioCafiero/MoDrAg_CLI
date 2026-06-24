@@ -9,7 +9,7 @@ from rich.markdown import Markdown
 
 from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
-from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed
+from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
 
 console = Console(width=80)
 import modrag_protein_functions
@@ -31,7 +31,7 @@ subs_code.print_flag = print_flag
 
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node]
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -91,7 +91,8 @@ def chat_turn(prompt: str):
     'pharmfeature_node': pharmfeature_node,
     'lipinski_node': lipinski_node,
     'get_qed': get_qed,
-    'predict_node': predict_node
+    'predict_node': predict_node,
+    'similarity_node': similarity_node
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -102,7 +103,7 @@ def chat_turn(prompt: str):
           messages=messages,
           tools=[uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node],
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node],
           think=True,
       )
       messages.append(response.message)

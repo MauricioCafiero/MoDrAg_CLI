@@ -1,6 +1,9 @@
 from modrag_molecule_functions import *
 from modrag_property_functions import *
 from modrag_protein_functions import *
+from similarity import similarity_node
+
+
 
 # Test 6: substitution_node() - Molecular substitution
 print("=" * 60)
@@ -40,3 +43,35 @@ except Exception as e:
 #     print("\n✓ predict_node test passed\n")
 # except Exception as e:
 #     print(f"✗ predict_node test failed: {e}\n")
+
+# Test similarity_node - Molecular Similarity
+print("=" * 60)
+print("TEST: similarity_node() - Molecular Similarity")
+print("=" * 60)
+try:
+    # Test with a set of similar molecules
+    ref_mols = ['NCCc1ccc(O)c(O)c1']  # Reference molecule: Dopamine
+    smiles_input = [
+        'c1ccccc1',          # Benzene
+        'c1ccccc1C',         # Toluene (very similar to benzene)
+        'c1ccccc1CC',        # Ethylbenzene (similar)
+        'CCO',               # Ethanol (different)
+        'CC(=O)O'            # Acetic acid (different)
+    ]
+    
+    print("Reference SMILES:", ref_mols)
+    print("Query SMILES:", smiles_input)
+    print("Similarity cutoff: 0.15")
+    print()
+    
+    # Run the similarity test
+    _, sim_out, all_images = similarity_node(ref_mols, smiles_input, sim_cutoff=0.15)
+    
+    # Display results
+    print(sim_out)
+    if all_images:
+        print(f"Generated {len(all_images)} image(s)")
+    
+    print("✓ similarity_node test passed\n")
+except Exception as e:
+    print(f"✗ similarity_node test failed: {e}\n")
