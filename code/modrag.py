@@ -36,12 +36,17 @@ tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node,
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
 
-models = ['deepseek-v3.1:671b', 'gpt-oss:120b', 'gpt-oss:20b',
-          'devstral-2:123b', 'cogito-2.1:671b',
-          'nemotron-3-nano:30b', 'gemini-3-flash-preview',
-          'kimi-k2:1t', 'kimi-k2.5', 'gemma4:31b-cloud']
+# models = ['deepseek-v3.1:671b', 'gpt-oss:120b', 'gpt-oss:20b',
+#           'devstral-2:123b', 'cogito-2.1:671b',
+#           'nemotron-3-nano:30b', 'gemini-3-flash-preview',
+#           'kimi-k2:1t', 'kimi-k2.5', 'gemma4:31b-cloud']
 
-model = models[-1]
+models = [
+    'gemma4:31b', 'glm-5.2', 'kimi-k2.7-code',
+    'deepseek-v4-pro', 'qwen3.5:397b',
+]
+
+model = models[0] # default model to use for chat
 
 sys_message = f'''
 You are a drug discovery assistant names Modrag. You have access to the 

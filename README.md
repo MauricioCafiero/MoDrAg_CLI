@@ -36,9 +36,11 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 ### Prerequisites
 - Python 3.8+
 - Virtual environment (recommended)
+- **Ollama API Key** (required) - MoDrAg uses Ollama's cloud LLM service for inference. Set the API key as an environment variable: `export OLLAMA_API_KEY='your-api-key'`
 
 ### Dependencies
 The project requires the following packages:
+- `ollama` - Python client for Ollama LLM service (core dependency)
 - `rdkit` - Molecular informatics
 - `pubchempy` - PubChem API access
 - `pandas` - Data manipulation
@@ -92,6 +94,12 @@ After this, you can run `modrag` from anywhere in your terminal instead of navig
 ## Usage
 
 ### Running the CLI
+
+**Important:** Before starting the CLI, set your Ollama API key as an environment variable:
+```bash
+export OLLAMA_API_KEY='your-api-key'
+```
+MoDrAg connects to Ollama's cloud LLM service using this key for all inference operations.
 
 **Option 1: With alias (recommended)** - If you ran the setup script:
 ```bash
