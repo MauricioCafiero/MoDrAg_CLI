@@ -707,7 +707,12 @@ def target_node(search_descriptors: list[str]):
 
 def docking_node(smiles_list: list[str], query_protein: str) -> (list[float], str):
   '''
-    Docking tool: uses dockstring to dock the molecule into the protein. The query proteins can 
+    Docking tool: uses dockstring to dock the molecule into the protein.
+    PREFERRED docking path: use this FIRST if the user's protein is in the list
+    below. If the protein is NOT in this list, or the user supplies a PDB file /
+    unknown binding site, use blind_dock_agent instead (which needs a receptor
+    PDB file -- fetch one with get_pdb_file if only a name or PDB ID is given).
+    The query proteins can
     be any of the following list: IGF1R,JAK2,KIT,LCK,MAPK14,MAPKAPK2,MET,PTK2,PTPN1,SRC,ABL1,AKT1,
     AKT2,CDK2,CSF1R,EGFR,KDR,MAPK1,FGFR1,ROCK1,MAP2K1,PLK1,HSD11B1,PARP1,PDE5A,PTGS2,ACHE,MAOB,CA2,
     GBA,HMGCR,NOS1,REN,DHFR,ESR1,ESR2,NR3C1,PGR,PPARA,PPARD,PPARG,AR,THRB,ADAM17,F10,F2,BACE1,CASP3,

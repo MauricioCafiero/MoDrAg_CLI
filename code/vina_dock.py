@@ -607,7 +607,13 @@ def blind_dock(receptor_pdb, smiles_list, npockets=1, exhaustiveness=8,
 
 def blind_dock_agent(receptor_pdb: str, smiles_list: list[str]) -> str:
     """
-    Dock ligands in a protein using ligand smiles and a receptor PDB file.
+    Blind-dock ligands into a receptor of UNKNOWN binding site, given a
+    receptor PDB file. Use this when the protein is NOT in docking_node's
+    dockstring target list, or when only a PDB structure (not a named target)
+    is available. If the user gives a protein name or PDB ID but no file,
+    fetch the PDB with get_pdb_file first, then pass the saved PDB path here.
+    Do NOT use this when the protein is in docking_node's list -- prefer
+    docking_node (faster, validated).
 
     Args:
         receptor_pdb: path to a receptor PDB file (binding site unknown).
