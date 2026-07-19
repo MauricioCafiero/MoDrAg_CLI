@@ -37,9 +37,9 @@ from datetime import datetime
 print_flag = False
 
 # Directories scanned for session artifacts, relative to the modrag CWD
-# (modrag runs from code/, so pdb_files/ is code/pdb_files/ and ../scratch is
-# the repo-root scratch/, matching the rest of the codebase).
-PDB_DIR = 'pdb_files'
+# (modrag runs from code/, so all of these resolve to the repo root:
+# ../pdb_files, ../scratch — matching ../images and ../vault used elsewhere).
+PDB_DIR = '../pdb_files'
 SCRATCH_DIR = '../scratch'
 
 # Pose-output SDF naming: blind_dock writes `<stem>_<idx>.sdf` next to the

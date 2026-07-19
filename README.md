@@ -80,7 +80,7 @@ Or manually install:
 pip install rdkit pubchempy pandas requests chembl-webresource-client pillow dockstring rcsbapi scikit-learn lightgbm openbabel-wheel rich
 ```
 
-4. (Optional) Setup shell alias for easy access:
+4. (Optional) Set up the `modrag` shell function for easy access:
 ```bash
 bash setup_alias.sh
 ```
@@ -88,10 +88,12 @@ bash setup_alias.sh
 This script will automatically:
 - Detect your current shell (zsh or bash)
 - Find the absolute path to your MoDrAg_CLI directory
-- Create a `modrag` alias in your shell config file (`~/.zshrc` for zsh or `~/.bashrc` for bash)
-- Source the config file to activate the alias immediately
+- Install a `modrag` shell **function** in your shell config file (`~/.zshrc` for zsh or `~/.bashrc` for bash), replacing any previous `modrag` alias or function definition
+- Source the config file to activate it immediately
 
 After this, you can run `modrag` from anywhere in your terminal instead of navigating to the code directory.
+
+> **Why a function and not an alias?** MoDrAg writes outputs to paths relative to the `code/` directory (`../images`, `../scratch`, `../vault`, `../pdb_files`). These only resolve correctly when the current working directory is `code/`. The `modrag` function `cd`s into `code/` inside a subshell before launching the CLI, so outputs always land in the right place no matter where you invoke `modrag` — while the subshell ensures your terminal stays in its original directory afterwards. A plain alias (which does not `cd`) would silently write images and data files to whichever directory you happened to be in.
 
 ## Usage
 
@@ -103,16 +105,18 @@ export OLLAMA_API_KEY='your-api-key'
 ```
 MoDrAg connects to Ollama's cloud LLM service using this key for all inference operations.
 
-**Option 1: With alias (recommended)** - If you ran the setup script:
+**Option 1: With the `modrag` function (recommended)** - If you ran the setup script:
 ```bash
 modrag
 ```
 
-**Option 2: Without alias:**
+**Option 2: Without the function:**
 ```bash
 cd code
 python modrag.py
 ```
+
+> **Note:** You must `cd` into the `code/` directory first (as shown). MoDrAg writes images, scratch files, PDB files, and the memory vault to paths relative to `code/` (`../images`, `../scratch`, `../pdb_files`, `../vault`). Running `python code/modrag.py` from the repo root or elsewhere will place those outputs in the wrong location. The `modrag` function handles this `cd` for you automatically.
 
 The CLI will start with a colorful header and prompt you for commands related to drug discovery tasks.
 
@@ -124,12 +128,12 @@ The CLI will start with a colorful header and prompt you for commands related to
 - Automatic image generation and notification system
 - Debug output control via `--print` flag
 
-For verbose debugging output with the alias:
+For verbose debugging output with the function:
 ```bash
 modrag --print
 ```
 
-Or without the alias:
+Or without the function:
 ```bash
 python modrag.py --print
 ```
@@ -141,10 +145,11 @@ Responses are rendered using the Rich library with proper markdown formatting. T
 - Better readability for complex information
 
 #### Image Generation and Notifications
-Several tools automatically generate molecular structure images which are saved to `../images/chat_image.png`. When an image is generated during a chat response, a notification appears:
+Several tools automatically generate molecular structure images which are saved to `../images/chat_image.png` (the `images/` folder at the repo root, i.e. `MoDrAg_CLI/images/chat_image.png`). When an image is generated during a chat response, a notification appears:
 ```
 Note: Image available at ../images/chat_image.png
 ```
+The notification only confirms the image file was *written* — it does not display the image inline in the terminal. Open `images/chat_image.png` in an editor (e.g. VSCode) to view it. Note that some editors cache image previews; if the file has been overwritten but still looks stale, close and reopen the preview tab.
 
 **Functions that generate images:**
 - **Related Node** (`modrag_molecule_functions.py`): Generates grid image of similar molecules
@@ -253,14 +258,14 @@ SDF per molecule next to the input PDB.
 from vina_dock import blind_dock_agent
 
 # Dock a list of ligands into a receptor whose binding site is unknown
-report = blind_dock_agent('pdb_files/protein_1ABC.pdb',
+report = blind_dock_agent('../pdb_files/protein_1ABC.pdb',
                           ['C1=CC=C(C=C1)O', 'CCO'])
 print(report)
 
 # Verify the best pose landed in the correct binding site by comparing it
 # against any co-crystallized ligand in the receptor PDB (recommended next step)
 from modrag_protein_functions import check_nearby_molecules
-print(check_nearby_molecules('pdb_files/protein_1ABC.pdb', 'pdb_files/protein_1ABC_0.sdf'))
+print(check_nearby_molecules('../pdb_files/protein_1ABC.pdb', '../pdb_files/protein_1ABC_0.sdf'))
 ```
 
 `blind_dock_agent` uses sensible validated defaults (`npockets=1`, exhaustiveness
@@ -326,13 +331,16 @@ See `MEMORY_NODE_PLAN.md` for the design and implementation details.
 The tools generate several types of output files:
 
 **Images:**
-- `../images/chat_image.png` - Centralized location for all molecular structure visualizations (updated each time a molecule image is generated)
+- `images/chat_image.png` (written as `../images/chat_image.png` from `code/`) - Centralized location for all molecular structure visualizations, at the repo root. Updated each time a molecule image is generated.
 
 **Data Files:**
-- `*_uniprot_ids.tsv` - UNIPROT search results
-- `*_bioactives.csv` - Bioactive molecule data with IC50 values
+- `*_uniprot_ids.tsv` - UNIPROT search results (written to `../scratch/`)
+- `*_bioactives.csv` - Bioactive molecule data with IC50 values (written to `../scratch/`)
 
-**Note:** Image generation functions automatically save to the centralized `chat_image.png` location with a system notification when new images are created during chat interactions.
+**PDB Files:**
+- `pdb_files/<protein_name>_<pdb_id>.pdb` (written as `../pdb_files/...` from `code/`) - Retrieved and cached receptor PDB files, at the repo root. Reused on subsequent requests for the same PDB ID. Blind-docking pose outputs (`<stem>_<idx>.sdf`, `best_pose.sdf`) are written next to the receptor PDB.
+
+**Note:** All output paths are relative to the `code/` directory. When you run `modrag` (the shell function) or `cd code && python modrag.py`, these resolve to the repo's `images/`, `pdb_files/`, `scratch/`, and `vault/` folders. Image generation functions save to the centralized `chat_image.png` location and print a notification when new images are created during chat interactions.
 
 ## Contributing
 

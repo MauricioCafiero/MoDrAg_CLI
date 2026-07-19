@@ -25,19 +25,22 @@ add_alias_to_file() {
     echo "Created $config_file"
   fi
   
-  # Check if the alias already exists
-  if grep -q "alias modrag=" "$config_file"; then
-    echo "Alias already exists in $config_file"
-    # Remove the old alias
-    sed -i '' '/alias modrag=/d' "$config_file"
-    echo "Removed old alias"
+  # Remove any prior modrag definition — either an old `alias modrag=`
+  # or a `modrag()` function (written as a single line by this script).
+  if grep -qE "^(alias modrag=|modrag\(\))" "$config_file"; then
+    echo "Existing modrag definition found in $config_file — replacing it"
+    sed -i '' -e '/alias modrag=/d' -e '/^modrag()/d' "$config_file"
   fi
-  
-  # Add the new alias
-  echo "alias modrag=\"python3 '$MODRAG_SCRIPT'\"" >> "$config_file"
-  
-  echo "✓ Added alias to $config_file:"
-  echo "  alias modrag=\"python3 '$MODRAG_SCRIPT'\""
+
+  # Add the new definition as a shell FUNCTION that cds into code/ in a
+  # subshell before running. This is required because modrag.py uses
+  # CWD-relative paths (../images, ../scratch, ../vault, pdb_files/) that
+  # only resolve correctly when CWD is code/. The subshell ( ... ) means
+  # the cd is discarded when modrag exits, so the user's terminal stays put.
+  echo "modrag() { ( cd '$SCRIPT_DIR/code' && python3 modrag.py \"\$@\" ); }" >> "$config_file"
+
+  echo "✓ Added modrag function to $config_file:"
+  echo "  modrag() { ( cd '$SCRIPT_DIR/code' && python3 modrag.py \"\$@\" ); }"
 }
 
 # Apply to detected shell's config file

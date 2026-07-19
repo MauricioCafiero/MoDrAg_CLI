@@ -300,7 +300,7 @@ def get_pdb_file(pdb_id: str, protein_name: str) -> str:
     Retrieves a protein PDB file from the PDB database and caches it on disk
     for use as a receptor in blind docking (see vina_dock.blind_dock_agent).
     Reuses an existing cached file for the same PDB ID if one is already
-    present in pdb_files/ (matched by the PDB-ID suffix of the filename, so
+    present in ../pdb_files/ (matched by the PDB-ID suffix of the filename, so
     the leading protein-name part may differ).
 
       Args:
@@ -308,29 +308,29 @@ def get_pdb_file(pdb_id: str, protein_name: str) -> str:
         protein_name: the name of the protein (used to name the cached file)
       Returns:
         A status string describing whether the file was reused or downloaded,
-        and the path it was saved to (pdb_files/<protein_name>_<pdb_id>.pdb).
+        and the path it was saved to (../pdb_files/<protein_name>_<pdb_id>.pdb).
   '''
   print('PDB retrieval tool')
   print('===================================================')
 
-  # Check whether a .pdb file for this PDB ID is already present in pdb_files/.
+  # Check whether a .pdb file for this PDB ID is already present in ../pdb_files/.
   # The leading part of the filename may differ (e.g. "sult1a3" vs "sulfotransferase"),
   # so only the PDB ID is used as the match test.
   pdb_id_upper = pdb_id.upper()
-  for existing in glob.glob('pdb_files/*.pdb'):
+  for existing in glob.glob('../pdb_files/*.pdb'):
     stem = os.path.basename(existing).rsplit('.', 1)[0]
     if stem.upper().endswith(f'_{pdb_id_upper}'):
       print(f'PDB file for PDB ID {pdb_id} already present at {existing}; reusing it.')
       return (f'The PDB file for protein {protein_name} with PDB ID {pdb_id} was already '
-              f'present in pdb_files/ as {existing} and has been reused.')
+              f'present in ../pdb_files/ as {existing} and has been reused.')
 
   url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
   r = requests.get(url)
-  os.makedirs('pdb_files', exist_ok=True)
-  with open(f"pdb_files/{protein_name}_{pdb_id}.pdb", 'w') as f:
+  os.makedirs('../pdb_files', exist_ok=True)
+  with open(f"../pdb_files/{protein_name}_{pdb_id}.pdb", 'w') as f:
     f.write(r.text)
 
-  return f'The PDB file for protein {protein_name} with PDB ID {pdb_id} has been retrieved and saved as pdb_files/{protein_name}_{pdb_id}.pdb'
+  return f'The PDB file for protein {protein_name} with PDB ID {pdb_id} has been retrieved and saved as ../pdb_files/{protein_name}_{pdb_id}.pdb'
 
 def check_nearby_molecules(pdb_filepath: str, ligand_filepath: str) -> str:
   '''
