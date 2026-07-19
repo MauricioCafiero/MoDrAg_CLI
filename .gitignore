@@ -3,3 +3,5 @@ scratch/
 __pycache__/
 pdb_files/
 vault/
+.DS_Store
+images/chat_image.png
