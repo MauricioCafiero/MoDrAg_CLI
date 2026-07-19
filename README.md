@@ -29,6 +29,8 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 - **Find PDB ID Node**: Search for PDB structures matching protein names
 - **Target Node**: Find drug targets associated with diseases (Open Targets)
 - **Docking Node**: Perform molecular docking using AutoDock Vina
+- **Blind Docking Node**: Dock ligands into a receptor of unknown binding site — pockets are detected automatically with a buriedness-based scan and the top-ranked pocket is docked with AutoDock Vina (no search-box center required). Use when the binding site is not known; a proximity fallback switches to a co-crystallized-ligand-adjacent pocket when the best-score pose lands off-target
+- **Check Nearby Molecules Node**: Verify a docked pose landed in the correct binding site by comparing it against any co-crystallized ligand in the receptor PDB — the recommended follow-up after blind docking
 - **Predict Node**: Predict IC50 values for molecules using LightGBM-trained models
 
 ## Installation
@@ -237,6 +239,35 @@ print(docking_string)
 # Predict IC50 values
 preds, pred_string = predict_node(['CCO', 'c1ccccc1'], 'CHEMBL217')
 print(pred_string)
+```
+
+### Blind Docking (unknown binding site)
+When the receptor's binding site is not known, `blind_dock_agent` detects
+putative pockets automatically (a buriedness-based voxel scan) and docks each
+SMILES into the top pocket with AutoDock Vina — no search-box center required.
+It returns a multi-line report (receptor, pocket centers, per-molecule scores +
+pose-SDF paths, best molecule) and writes a rigid-receptor PDBQT plus one pose
+SDF per molecule next to the input PDB.
+
+```python
+from vina_dock import blind_dock_agent
+
+# Dock a list of ligands into a receptor whose binding site is unknown
+report = blind_dock_agent('pdb_files/protein_1ABC.pdb',
+                          ['C1=CC=C(C=C1)O', 'CCO'])
+print(report)
+
+# Verify the best pose landed in the correct binding site by comparing it
+# against any co-crystallized ligand in the receptor PDB (recommended next step)
+from modrag_protein_functions import check_nearby_molecules
+print(check_nearby_molecules('pdb_files/protein_1ABC.pdb', 'pdb_files/protein_1ABC_0.sdf'))
+```
+
+`blind_dock_agent` uses sensible validated defaults (`npockets=1`, exhaustiveness
+8, 28 Å box). For a novel receptor where the top pocket may not be the real site,
+dock the top-3 pockets by calling `blind_dock(...)` directly from `vina_dock`
+with `npockets=3`. See `BLIND_DOCK_INTEGRATION_PLAN.md` for the full parameter
+set and validation details.
 ```
 
 ## Data Sources

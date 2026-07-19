@@ -592,6 +592,16 @@ def blind_dock(receptor_pdb, smiles_list, npockets=1, exhaustiveness=8,
                      f"score={baff:.2f} kcal/mol  SDF={bsdf}")
     else:
         lines.append("Best molecule: none docked successfully")
+    # Next step: confirm the predicted pose actually sits in the real binding
+    # site. check_nearby_molecules compares the docked pose against any
+    # co-crystallized ligand in the receptor PDB; if a crystal ligand is
+    # present, run it on the best molecule's pose SDF.
+    lines.append("")
+    lines.append("Next step: verify the docked pose with the "
+                 "check_nearby_molecules tool. Pass the receptor PDB as "
+                 f"`pdb_filepath` and the best-molecule pose SDF as "
+                 f"`ligand_filepath` to confirm the pose landed in the correct "
+                 f"binding site.")
     return "\n".join(lines)
 
 
