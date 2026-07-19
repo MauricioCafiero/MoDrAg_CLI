@@ -65,9 +65,20 @@ def smiles_node(names_list: list[str]) -> (list[str], str):
   print("smiles tool")
   print('===================================================')
 
+  # Coerce common argument shapes into a list of names. The LLM agent calls
+  # this node as smiles_node(**tc.function.arguments) and frequently passes a
+  # bare string ("aspirin") or a comma/whitespace-separated string instead of
+  # a list. Without this, `for name in names_list` iterates the string
+  # character-by-character and queries PubChem for 'a', 's', 'p', ... which
+  # accidentally resolve to elements ('s'->[S], 'p'->[P], 'i'->II, 'n'->N#N),
+  # returning garbage SMILES for molecules that should resolve cleanly.
+  if isinstance(names_list, str):
+      names_list = [s for s in names_list.replace(',', ' ').split() if s]
+
   smiles_list = []
   smiles_string = ''
   for name in names_list:
+    name = name.strip()
     try:
         res = pcp.get_compounds(name, "name")
         smiles = res[0].smiles
