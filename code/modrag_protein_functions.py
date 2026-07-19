@@ -3,6 +3,8 @@ import requests
 import os
 import itertools
 import json
+import glob
+import math
 from rdkit import Chem
 from rdkit.Chem import AllChem, QED, Descriptors
 from rdkit.Chem import Draw
@@ -24,6 +26,12 @@ from dockstring import load_target
 
 # Module-level print flag - set from modrag.py
 print_flag = False
+
+# Distance (Angstrom) under which a co-crystallized molecule is reported as
+# "close" to the docked ligand (minimum atom-to-atom distance). Mirrors
+# vina_dock.NEAR_LIGAND_CUTOFF so "near a known ligand" means the same thing
+# in the post-hoc check and the blind-dock proximity fallback.
+NEARBY_DISTANCE_CUTOFF = 5.0
 
 def uniprot_node(protein_names: list[str], human_flag: bool = False) -> (list[str], str):
   '''
@@ -286,6 +294,135 @@ def get_protein_from_pdb(pdb_id):
   url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
   r = requests.get(url)
   return r.text
+
+def get_pdb_file(pdb_id: str, protein_name: str) -> str:
+  '''
+    Retrieves a protein PDB file from the PDB database and caches it on disk
+    for use as a receptor in blind docking (see vina_dock.blind_dock_agent).
+    Reuses an existing cached file for the same PDB ID if one is already
+    present in pdb_files/ (matched by the PDB-ID suffix of the filename, so
+    the leading protein-name part may differ).
+
+      Args:
+        pdb_id: the PDB ID of the protein
+        protein_name: the name of the protein (used to name the cached file)
+      Returns:
+        A status string describing whether the file was reused or downloaded,
+        and the path it was saved to (pdb_files/<protein_name>_<pdb_id>.pdb).
+  '''
+  print('PDB retrieval tool')
+  print('===================================================')
+
+  # Check whether a .pdb file for this PDB ID is already present in pdb_files/.
+  # The leading part of the filename may differ (e.g. "sult1a3" vs "sulfotransferase"),
+  # so only the PDB ID is used as the match test.
+  pdb_id_upper = pdb_id.upper()
+  for existing in glob.glob('pdb_files/*.pdb'):
+    stem = os.path.basename(existing).rsplit('.', 1)[0]
+    if stem.upper().endswith(f'_{pdb_id_upper}'):
+      print(f'PDB file for PDB ID {pdb_id} already present at {existing}; reusing it.')
+      return (f'The PDB file for protein {protein_name} with PDB ID {pdb_id} was already '
+              f'present in pdb_files/ as {existing} and has been reused.')
+
+  url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
+  r = requests.get(url)
+  os.makedirs('pdb_files', exist_ok=True)
+  with open(f"pdb_files/{protein_name}_{pdb_id}.pdb", 'w') as f:
+    f.write(r.text)
+
+  return f'The PDB file for protein {protein_name} with PDB ID {pdb_id} has been retrieved and saved as pdb_files/{protein_name}_{pdb_id}.pdb'
+
+def check_nearby_molecules(pdb_filepath: str, ligand_filepath: str) -> str:
+  '''
+    Checks for nearby molecules in the PDB file to assess if the docking has
+    located the correct binding site. Should be called to verify blind docking
+    in the case where a ligand is present in the crystal structure.
+
+      Args:
+        pdb_filepath: the path to the PDB file
+        ligand_filepath: the path to the ligand file (SDF of docked poses)
+      Returns:
+        nearby_molecules: a string containing the results of the check.
+  '''
+  print(f"Nearby molecules check tool")
+  print('===================================================')
+
+  with open(pdb_filepath, 'r') as pdb_file:
+      pdb_content = pdb_file.readlines()
+
+  ligand_names = {}
+  for line in pdb_content:
+    if line.startswith('HETNAM'):
+      molecule_symbol = line[11:15].strip()
+      molecule_name = line[15:70].strip()
+      if not molecule_symbol:
+        continue
+      if molecule_symbol not in ligand_names:
+        ligand_names[molecule_symbol] = molecule_name
+      elif molecule_name:
+        ligand_names[molecule_symbol] += ' ' + molecule_name
+
+  molecule_dict = {}
+  for line in pdb_content:
+    if line.startswith('HETATM'):
+      molecule_symbol = line[17:20].strip()
+      if molecule_symbol not in ligand_names:
+        continue
+      chain_id = line[21].strip()
+      occ_key = (molecule_symbol, chain_id)
+      if occ_key not in molecule_dict:
+        molecule_dict[occ_key] = {'name': ligand_names[molecule_symbol] or molecule_symbol,
+                                  'coords': []}
+      x_coord = float(line[30:38])
+      y_coord = float(line[38:46])
+      z_coord = float(line[46:54])
+      molecule_dict[occ_key]['coords'].append((x_coord, y_coord, z_coord))
+
+  ligand_atom_coords = []
+  try:
+    supplier = Chem.SDMolSupplier(ligand_filepath, removeHs=True)
+    poses = [m for m in supplier if m is not None]
+  except Exception:
+    poses = []
+  for mol in poses:
+    if not ligand_atom_coords:
+      conf = mol.GetConformer()
+      ligand_atom_coords = [(conf.GetAtomPosition(j).x,
+                             conf.GetAtomPosition(j).y,
+                             conf.GetAtomPosition(j).z) for j in range(mol.GetNumAtoms())]
+
+  nearby_molecules = f'Checked for nearby molecules in {pdb_filepath}.\n'
+  if not ligand_atom_coords:
+    nearby_molecules += 'No ligand could be read from the SDF.\n'
+  else:
+    distances = []
+    for (molecule_symbol, chain_id), info in molecule_dict.items():
+      mol_coords = info['coords']
+      if not mol_coords or not ligand_atom_coords:
+        continue
+      best = None
+      for lx, ly, lz in ligand_atom_coords:
+        for mx, my, mz in mol_coords:
+          d = math.sqrt((lx - mx) ** 2 + (ly - my) ** 2 + (lz - mz) ** 2)
+          if best is None or d < best:
+            best = d
+      distances.append((best, molecule_symbol, chain_id, info))
+    distances.sort(key=lambda d: d[0])
+
+    nearby_molecules += (f'Molecules within {NEARBY_DISTANCE_CUTOFF:.1f} A '
+                         f'of the docked ligand (min atom-to-atom distance):\n')
+    any_close = False
+    for dist, molecule_symbol, chain_id, info in distances:
+      molecule_name = info['name']
+      line = (f'  {molecule_name} ({molecule_symbol}, chain {chain_id}): '
+             f'min atom-to-atom {dist:.2f} A')
+      if dist <= NEARBY_DISTANCE_CUTOFF:
+        any_close = True
+        nearby_molecules += line + ' -- CLOSE\n'
+    if not any_close:
+      nearby_molecules += '  (none found)\n'
+
+  return nearby_molecules
 
 def one_to_three(one_seq):
   '''

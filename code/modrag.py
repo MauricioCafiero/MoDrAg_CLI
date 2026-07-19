@@ -7,15 +7,17 @@ from ollama import Client as ollama_client
 from rich.console import Console
 from rich.markdown import Markdown
 
-from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node
+from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node, check_nearby_molecules, get_pdb_file
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
+from vina_dock import blind_dock_agent
 
 console = Console(width=80)
 import modrag_protein_functions
 import modrag_molecule_functions
 import modrag_property_functions
 import subs_code
+import vina_dock
 
 # get the print flag from the command line arguments, if they exist, otherwise set it to False
 if len(sys.argv) > 1 and sys.argv[1] == '--print':
@@ -29,9 +31,16 @@ modrag_molecule_functions.print_flag = print_flag
 modrag_property_functions.print_flag = print_flag
 subs_code.print_flag = print_flag
 
+# Proximity fallback for blind docking: when True, blind_dock docks the top-2
+# detected pockets and, if the best-score pocket's pose is NOT near a
+# co-crystallized ligand, switches to the other pocket when it IS near one
+# (proximity preferred over Vina score).
+vina_dock.FALLBACK_TO_SECOND_POCKET = True
+
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node]
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
+         check_nearby_molecules, get_pdb_file, blind_dock_agent]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -97,7 +106,10 @@ def chat_turn(prompt: str):
     'lipinski_node': lipinski_node,
     'get_qed': get_qed,
     'predict_node': predict_node,
-    'similarity_node': similarity_node
+    'similarity_node': similarity_node,
+    'check_nearby_molecules': check_nearby_molecules,
+    'get_pdb_file': get_pdb_file,
+    'blind_dock_agent': blind_dock_agent
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -108,7 +120,8 @@ def chat_turn(prompt: str):
           messages=messages,
           tools=[uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
-         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node],
+         substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
+         check_nearby_molecules, get_pdb_file, blind_dock_agent],
           think=True,
       )
       messages.append(response.message)
