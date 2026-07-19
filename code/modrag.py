@@ -11,6 +11,7 @@ from modrag_protein_functions import uniprot_node, listbioactives_node, getbioac
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
 from vina_dock import blind_dock_agent
+import modrag_memory
 
 console = Console(width=80)
 import modrag_protein_functions
@@ -30,6 +31,12 @@ modrag_protein_functions.print_flag = print_flag
 modrag_molecule_functions.print_flag = print_flag
 modrag_property_functions.print_flag = print_flag
 subs_code.print_flag = print_flag
+modrag_memory.print_flag = print_flag
+
+# When the current session's work began (time.time()). Used by the `memory`
+# keyword to scope which PDB/SDF/CSV files were touched *this* session.
+# Reset on every save and on start_chat so each memory covers a clean window.
+session_start_time = time.time()
 
 # Proximity fallback for blind docking: when True, blind_dock docks the top-2
 # detected pockets and, if the best-score pocket's pose is NOT near a
@@ -73,10 +80,11 @@ def start_chat():
   '''
   Initializes a new chat session by resetting the chat history, reasoning, and messages.
   '''
-  global chat_history, messages, reasoning
+  global chat_history, messages, reasoning, session_start_time
   chat_history = []
   reasoning = []
   messages = [{'role': 'system', 'content': sys_message}]
+  session_start_time = time.time()
 
 def chat_turn(prompt: str):
   '''
@@ -148,6 +156,48 @@ def chat_turn(prompt: str):
 
   return '', None, messages[-1]['content']
 
+# Vault lives at the repo root (modrag runs from code/, so ../vault).
+VAULT_DIR = '../vault'
+
+def handle_memory_prompt(prompt):
+  '''
+    Intercepts the memory/recall keywords before the prompt is sent to the
+    model. Returns (handled, output) where `handled` is True if the prompt was
+    a memory keyword (and should NOT be forwarded to the model) and `output`
+    is the markdown string to print to the user, or None.
+
+    Keywords:
+      memory | save memory | remember   -> write this session to the vault
+      recall                              -> list saved sessions
+      recall last | recall <date>         -> load a saved session into context
+    '''
+  global session_start_time
+  raw = prompt.strip()
+  low = raw.lower()
+
+  # --- write ---
+  if low in ('memory', 'save memory', 'remember'):
+    status = modrag_memory.save_session(messages, session_start_time, vault_dir=VAULT_DIR)
+    # reset the window so the next memory only covers work done after now
+    session_start_time = time.time()
+    return True, status
+
+  # --- read ---
+  if low == 'recall':
+    return True, modrag_memory.list_sessions(vault_dir=VAULT_DIR)
+  if low.startswith('recall '):
+    which = raw[len('recall '):].strip().lower() or 'last'
+    body = modrag_memory.recall_session(vault_dir=VAULT_DIR, which=which)
+    if body is None:
+      return True, f'No saved session matched "{which}".'
+    # inject the recalled summary as context so the next chat_turn knows it
+    messages.append({'role': 'user',
+                      'content': f'Here is the summary of a previous Modrag '
+                                 f'session for your context:\n\n{body}'})
+    return True, body
+
+  return False, None
+
 start_chat()
 header_string = f'''
 \033[1;36m****************************************\033[0m
@@ -168,6 +218,7 @@ header_string = f'''
 \033[1;35mThe MOdular DRug design AGent!\033[0m
 \033[1;36mA command-line interface (CLI) for drug\033[0m
 \033[1;35mdiscovery and molecular design.\033[0m
+\033[38;5;208mType `memory` to save this session, `recall` to revisit one, `quit` to exit.\033[0m
 \033[0m'''
 
 
@@ -178,23 +229,27 @@ print('')
 if next_prompt == 'quit':
   print("\033[1;35mResponse > \033[0mGoodbye!")
 else:
-  # Get image modification time before
-  img_path = '../images/chat_image.png'
-  img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
-  
-  start_time = time.time()
-  _, _, response_content = chat_turn(next_prompt)
-  end_time = time.time()
-  
-  # Check if image was modified
-  img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
-  
-  time_for_inf = (end_time - start_time) / 60
-  print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
-  console.print(Markdown(response_content))
-  
-  if img_mtime_after and img_mtime_before != img_mtime_after:
-    print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")
+  handled, mem_output = handle_memory_prompt(next_prompt)
+  if handled:
+    console.print(Markdown(mem_output or ''))
+  else:
+    # Get image modification time before
+    img_path = '../images/chat_image.png'
+    img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+
+    start_time = time.time()
+    _, _, response_content = chat_turn(next_prompt)
+    end_time = time.time()
+
+    # Check if image was modified
+    img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+
+    time_for_inf = (end_time - start_time) / 60
+    print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
+    console.print(Markdown(response_content))
+
+    if img_mtime_after and img_mtime_before != img_mtime_after:
+      print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")
 
 while next_prompt != 'quit':
   print('')
@@ -203,22 +258,25 @@ while next_prompt != 'quit':
   if next_prompt == 'quit':
     print("\033[1;35mResponse > \033[0mGoodbye!")
     break
-  else:
-    # Get image modification time before
-    img_path = '../images/chat_image.png'
-    img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
-    
-    start_time = time.time()
-    _, _, response_content = chat_turn(next_prompt)
-    end_time = time.time()
-    
-    # Check if image was modified
-    img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
-    
-    time_for_inf = (end_time - start_time) / 60
-    print('')
-    print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
-    console.print(Markdown(response_content))
-    
-    if img_mtime_after and img_mtime_before != img_mtime_after:
-      print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")
+  handled, mem_output = handle_memory_prompt(next_prompt)
+  if handled:
+    console.print(Markdown(mem_output or ''))
+    continue
+  # Get image modification time before
+  img_path = '../images/chat_image.png'
+  img_mtime_before = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+
+  start_time = time.time()
+  _, _, response_content = chat_turn(next_prompt)
+  end_time = time.time()
+
+  # Check if image was modified
+  img_mtime_after = os.path.getmtime(img_path) if os.path.exists(img_path) else None
+
+  time_for_inf = (end_time - start_time) / 60
+  print('')
+  print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
+  console.print(Markdown(response_content))
+
+  if img_mtime_after and img_mtime_before != img_mtime_after:
+    print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")

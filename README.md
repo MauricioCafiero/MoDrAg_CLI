@@ -270,6 +270,42 @@ with `npockets=3`. See `BLIND_DOCK_INTEGRATION_PLAN.md` for the full parameter
 set and validation details.
 ```
 
+### Session Memory (saving and recalling sessions)
+Modrag can save a summary of the current session — every PDB, docking-pose
+SDF, and CSV touched during it — to a persistent **vault** at the repo root,
+and move the important docking-pose SDFs (`<stem>_<idx>.sdf` pose outputs and
+`best_pose.sdf`) into that save so the results are not lost. PDB and CSV files
+are named in the summary but left in place (their persistence is untouched).
+
+Two keywords, typed at the Modrag prompt (not sent to the model):
+
+- `memory` (or `save memory` / `remember`) — write this session to the vault.
+  Creates a new timestamped folder under `vault/` (append-only; nothing is
+  ever overwritten) and appends a one-line entry to `vault/INDEX.md`.
+- `recall` — list every saved session (read from `vault/INDEX.md`).
+- `recall last` (or `recall 2026-07-19`) — load a saved session's summary into
+  the conversation so the model has the prior session's context (files, scores,
+  what was tried) for the next question.
+
+```
+What can I help with today? > dock CCO against PCSK9_6U2N
+...
+What else can I help with? > memory
+Session memory saved to ../vault/2026-07-19_1714_PCSK9_6U2N (1 pose SDF(s) moved, ...)
+What else can I help with? > recall
+What else can I help with? > recall last
+```
+
+The vault layout:
+```
+vault/
+  INDEX.md                              # one line appended per save
+  2026-07-19_1714_PCSK9/
+    session_summary.md                  # files list + transcript excerpt
+    poses/PCSK9_6U2N_0.sdf              # moved pose outputs
+```
+See `MEMORY_NODE_PLAN.md` for the design and implementation details.
+
 ## Data Sources
 
 - **PubChem**: Molecular structures, names, and properties

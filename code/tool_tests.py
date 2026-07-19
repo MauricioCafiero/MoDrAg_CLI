@@ -119,3 +119,53 @@ try:
     print("✓ pharmfeature_node test passed\n")
 except Exception as e:
     print(f"✗ pharmfeature_node test failed: {e}\n")
+
+# Test 9: modrag_memory - session save / recall (self-contained temp vault)
+print("=" * 60)
+print("TEST 9: modrag_memory - save / recall session memory")
+print("=" * 60)
+try:
+    import time, os, shutil, tempfile
+    from modrag_memory import (save_session, recall_session, list_sessions,
+                               is_important_sdf)
+    import modrag_memory as M
+
+    tmp = tempfile.mkdtemp(prefix='vault_test_')
+    vault = os.path.join(tmp, 'vault')
+    pdbdir = os.path.join(tmp, 'pdb_files')
+    scratch = os.path.join(tmp, 'scratch')
+    os.makedirs(pdbdir); os.makedirs(scratch)
+    open(os.path.join(pdbdir, 'PCSK9_6U2N.pdb'), 'w').close()
+    open(os.path.join(pdbdir, 'PCSK9_6U2N_0.sdf'), 'w').write('pose')
+    open(os.path.join(pdbdir, 'ligand_0.sdf'), 'w').write('lig')
+    open(os.path.join(scratch, 'CHEMBL123_bioactives.csv'), 'w').close()
+
+    M.PDB_DIR = pdbdir
+    M.SCRATCH_DIR = scratch
+
+    assert is_important_sdf('x/PCSK9_6U2N_0.sdf') is True
+    assert is_important_sdf('x/best_pose.sdf') is True
+    assert is_important_sdf('x/ligand_0.sdf') is False
+
+    messages = [
+      {'role': 'system', 'content': 'sys'},
+      {'role': 'user', 'content': 'Dock against PCSK9_6U2N'},
+      {'role': 'tool', 'tool_name': 'blind_dock_agent', 'content': 'affinity = -8.5'},
+    ]
+    status = save_session(messages, time.time() - 1, vault_dir=vault)
+    print(status)
+
+    assert not os.path.exists(os.path.join(pdbdir, 'PCSK9_6U2N_0.sdf'))
+    assert os.path.exists(os.path.join(pdbdir, 'ligand_0.sdf'))
+    assert os.path.exists(os.path.join(pdbdir, 'PCSK9_6U2N.pdb'))
+    assert os.path.exists(os.path.join(vault, 'INDEX.md'))
+
+    recalled = recall_session(vault_dir=vault, which='last')
+    assert recalled and 'Recalled session' in recalled and '-8.5' in recalled
+    assert recall_session(vault_dir=vault, which='1999-01-01') is None
+    print(list_sessions(vault_dir=vault))
+
+    shutil.rmtree(tmp, ignore_errors=True)
+    print("✓ modrag_memory test passed\n")
+except Exception as e:
+    print(f"✗ modrag_memory test failed: {e}\n")
