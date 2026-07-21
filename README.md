@@ -33,6 +33,9 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 - **Check Nearby Molecules Node**: Verify a docked pose landed in the correct binding site by comparing it against any co-crystallized ligand in the receptor PDB — the recommended follow-up after blind docking
 - **Predict Node**: Predict IC50 values for molecules using LightGBM-trained models
 
+### Generative Tools
+- **GPT Node**: Fine-tune a mini SMILES GPT (a 1-block transformer foundation model, `CafChemGPT`) on a ChEMBL target's bioactive molecules and generate novel drug-like candidate molecules for that target. Weights and vocabulary live in `data/` (`GPT_ZN305_mini.pt`, `vocab_305K.txt`, `vocab.txt`, `ZN305K_smiles.csv`); per-target fine-tuned checkpoints are written to `data/GPT_{id}_mini_finetuned.pt` and generated SMILES are cached in `scratch/gen_smiles_{id}.csv`. Requires `torch` (runs on Apple Silicon MPS, CUDA, or CPU). See `code/GPT_INTEGRATION.md` for details.
+
 ## Installation
 
 ### Prerequisites
@@ -55,6 +58,8 @@ The project requires the following packages:
 - `lightgbm` - Gradient boosting for IC50 prediction
 - `openbabel-wheel` - Chemical structure conversion utilities
 - `rich` - Rich text and markdown rendering for terminal output
+- `torch` - Mini SMILES GPT foundation-model fine-tuning and generation (GPT Node)
+- `pillow` - Image generation for molecule grids (GPT Node and other visualization tools)
 
 ### Setup
 
@@ -157,6 +162,7 @@ The notification only confirms the image file was *written* — it does not disp
 - **Substitution Node** (`modrag_property_functions.py`): Generates grid image of newly substituted molecules
 - **Get Bioactives Node** (`modrag_protein_functions.py`): Generates grid image of bioactive molecules with IC50 values
 - **Similarity Node** (`modrag_property_functions.py`): Generates grid image of similar molecules based on Morgan fingerprint comparison
+- **GPT Node** (`gpt_node.py`): Generates grid image of GPT-generated candidate molecules for a ChEMBL target
 
 ### Running Tests
 
@@ -185,10 +191,14 @@ MoDrAg_CLI/
 │   ├── modrag_property_functions.py   # Molecular property tools
 │   ├── modrag_protein_functions.py    # Protein and docking tools
 │   ├── subs_code.py                   # Substitution helper functions
+│   ├── gpt_node.py                    # GPT generative node (MoDrAg entry point)
+│   ├── finetune_gpt.py                # Mini GPT fine-tune + generation logic
+│   ├── CafChemGPT.py                  # SMILES GPT toolkit (model, train, inference)
+│   ├── smiles_tokenizer.py            # Standalone SMILES tokenizer (no DeepChem)
 │   ├── tool_tests.py                  # Basic test suite
 │   ├── protein_test.py                # Comprehensive test suite for protein functions
 │   └── modrag-env/                    # Python virtual environment
-├── data/                              # Data files
+├── data/                              # Foundation model weights, vocab, and prompt data
 ├── scratch/                           # Temporary files and outputs
 └── README.md                          # This file
 ```
@@ -245,6 +255,23 @@ print(docking_string)
 preds, pred_string = predict_node(['CCO', 'c1ccccc1'], 'CHEMBL217')
 print(pred_string)
 ```
+
+### Generating Molecules with the GPT Node
+`gpt_node` fine-tunes the mini SMILES GPT on a ChEMBL target's bioactives and
+returns novel candidate molecules. It fetches the bioactives CSV (via
+`getbioactives_node`) if not already cached in `../scratch/`, writes a per-target
+fine-tuned checkpoint to `../data/GPT_{id}_mini_finetuned.pt`, caches generated
+SMILES in `../scratch/gen_smiles_{id}.csv`, and saves a molecule grid to
+`../images/chat_image.png`.
+
+```python
+from gpt_node import gpt_node
+
+smiles, gpt_string, images = gpt_node('CHEMBL213')
+print(gpt_string)
+```
+
+Re-running the same ChEMBL ID reuses the cached SMILES and skips retraining.
 
 ### Blind Docking (unknown binding site)
 When the receptor's binding site is not known, `blind_dock_agent` detects

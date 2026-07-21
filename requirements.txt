@@ -12,3 +12,5 @@ scipy
 numpy
 lightgbm
 rich
+pillow
+torch

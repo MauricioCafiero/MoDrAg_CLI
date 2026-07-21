@@ -6,11 +6,13 @@ import time, sys
 from ollama import Client as ollama_client
 from rich.console import Console
 from rich.markdown import Markdown
+from markdown_render import to_unicode_markdown
 
 from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node, check_nearby_molecules, get_pdb_file
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
 from vina_dock import blind_dock_agent
+from gpt_node import gpt_node
 import modrag_memory
 
 console = Console(width=80)
@@ -19,6 +21,9 @@ import modrag_molecule_functions
 import modrag_property_functions
 import subs_code
 import vina_dock
+import gpt_node as gpt_node_module
+import finetune_gpt
+import CafChemGPT
 
 # get the print flag from the command line arguments, if they exist, otherwise set it to False
 if len(sys.argv) > 1 and sys.argv[1] == '--print':
@@ -32,6 +37,9 @@ modrag_molecule_functions.print_flag = print_flag
 modrag_property_functions.print_flag = print_flag
 subs_code.print_flag = print_flag
 modrag_memory.print_flag = print_flag
+gpt_node_module.print_flag = print_flag
+finetune_gpt.print_flag = print_flag
+CafChemGPT.print_flag = print_flag
 
 # When the current session's work began (time.time()). Used by the `memory`
 # keyword to scope which PDB/SDF/CSV files were touched *this* session.
@@ -47,7 +55,7 @@ vina_dock.FALLBACK_TO_SECOND_POCKET = True
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
-         check_nearby_molecules, get_pdb_file, blind_dock_agent]
+         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -117,7 +125,8 @@ def chat_turn(prompt: str):
     'similarity_node': similarity_node,
     'check_nearby_molecules': check_nearby_molecules,
     'get_pdb_file': get_pdb_file,
-    'blind_dock_agent': blind_dock_agent
+    'blind_dock_agent': blind_dock_agent,
+    'gpt_node': gpt_node
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -129,7 +138,7 @@ def chat_turn(prompt: str):
           tools=[uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
-         check_nearby_molecules, get_pdb_file, blind_dock_agent],
+         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node],
           think=True,
       )
       messages.append(response.message)
@@ -231,7 +240,7 @@ if next_prompt == 'quit':
 else:
   handled, mem_output = handle_memory_prompt(next_prompt)
   if handled:
-    console.print(Markdown(mem_output or ''))
+    console.print(Markdown(to_unicode_markdown(mem_output or '')))
   else:
     # Get image modification time before
     img_path = '../images/chat_image.png'
@@ -246,7 +255,7 @@ else:
 
     time_for_inf = (end_time - start_time) / 60
     print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
-    console.print(Markdown(response_content))
+    console.print(Markdown(to_unicode_markdown(response_content)))
 
     if img_mtime_after and img_mtime_before != img_mtime_after:
       print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")
@@ -260,7 +269,7 @@ while next_prompt != 'quit':
     break
   handled, mem_output = handle_memory_prompt(next_prompt)
   if handled:
-    console.print(Markdown(mem_output or ''))
+    console.print(Markdown(to_unicode_markdown(mem_output or '')))
     continue
   # Get image modification time before
   img_path = '../images/chat_image.png'
@@ -276,7 +285,7 @@ while next_prompt != 'quit':
   time_for_inf = (end_time - start_time) / 60
   print('')
   print(f"\033[1;35mResponse {time_for_inf:.2f}m > \033[0m")
-  console.print(Markdown(response_content))
+  console.print(Markdown(to_unicode_markdown(response_content)))
 
   if img_mtime_after and img_mtime_before != img_mtime_after:
     print(f"\033[38;5;208mNote: Image available at {img_path}\033[0m")

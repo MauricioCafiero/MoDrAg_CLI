@@ -409,18 +409,32 @@ def check_nearby_molecules(pdb_filepath: str, ligand_filepath: str) -> str:
       distances.append((best, molecule_symbol, chain_id, info))
     distances.sort(key=lambda d: d[0])
 
-    nearby_molecules += (f'Molecules within {NEARBY_DISTANCE_CUTOFF:.1f} A '
-                         f'of the docked ligand (min atom-to-atom distance):\n')
-    any_close = False
-    for dist, molecule_symbol, chain_id, info in distances:
-      molecule_name = info['name']
-      line = (f'  {molecule_name} ({molecule_symbol}, chain {chain_id}): '
-             f'min atom-to-atom {dist:.2f} A')
-      if dist <= NEARBY_DISTANCE_CUTOFF:
+    if distances:
+      # Headline: the closest co-crystallized ligand and its min atom-to-atom
+      # distance, regardless of cutoff -- so the caller always gets a number,
+      # not just a yes/no "nearby". Tagged CLOSE (within cutoff) or FAR.
+      cdist, csym, cchain, cinfo = distances[0]
+      cname = cinfo['name']
+      tag = 'CLOSE' if cdist <= NEARBY_DISTANCE_CUTOFF else 'FAR'
+      nearby_molecules += (f'Closest co-crystallized ligand: {cname} '
+                           f'({csym}, chain {cchain}): min atom-to-atom '
+                           f'{cdist:.2f} A -- {tag}\n')
+      nearby_molecules += (f'Other molecules within {NEARBY_DISTANCE_CUTOFF:.1f} A '
+                           f'(min atom-to-atom distance):\n')
+      any_close = False
+      for dist, molecule_symbol, chain_id, info in distances[1:]:
+        if dist > NEARBY_DISTANCE_CUTOFF:
+          break  # distances is sorted; nothing further can be close
         any_close = True
-        nearby_molecules += line + ' -- CLOSE\n'
-    if not any_close:
-      nearby_molecules += '  (none found)\n'
+        molecule_name = info['name']
+        nearby_molecules += (f'  {molecule_name} ({molecule_symbol}, chain '
+                             f'{chain_id}): min atom-to-atom {dist:.2f} A -- '
+                             f'CLOSE\n')
+      if not any_close:
+        nearby_molecules += '  (none other within cutoff)\n'
+    else:
+      nearby_molecules += ('No co-crystallized ligands (HETNAM-keyed HETATM) '
+                           'found in the PDB.\n')
 
   return nearby_molecules
 
