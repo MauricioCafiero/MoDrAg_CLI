@@ -1,3 +1,13 @@
+# Import torch BEFORE any heavy native libs (rdkit via the node modules, meeko/
+# autodock-vina via vina_dock, ...). If Metal/MPS initializes after those libs are
+# loaded, the Metal backend is corrupted and the GPT finetune segfaults (SIGSEGV,
+# exit 139) on the first MPS tensor allocation in train_gpt (CafChemGPT.py:715).
+# Importing torch first lets Metal init cleanly and coexist with the rest. This is
+# the only place that needs the change: every other entry point (standalone
+# finetune_gpt, the original CafChem repo) already imports torch before the heavy
+# libs, which is why this only ever crashed inside modrag. See memory note
+# gpt-finetune-chembl220-crash.
+import torch  # noqa: E402  -- MUST stay first; do not move below the node/vina imports
 import os
 from PIL import Image
 from collections import Counter

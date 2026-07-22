@@ -34,7 +34,23 @@ def gpt_node(chembl_id: str) -> (list[str], str, list):
     print("GPT tool")
     print("=" * 51)
 
-    chembl_id = chembl_id.upper()
+    # Coerce common argument shapes into a single ChEMBL id string. The LLM
+    # agent calls this node as gpt_node(**tc.function.arguments) and often
+    # passes chembl_id as a list (["CHEMBL220"]), an int (220), or None
+    # instead of a bare string. Without this, chembl_id.upper() below throws
+    # AttributeError instantly -- and it sits outside the try/except below,
+    # so the node's safety net never catches it and the whole turn crashes.
+    # Mirrors the bare-string coercion added to smiles_node (commit 6cdb59c).
+    if isinstance(chembl_id, (list, tuple)):
+        chembl_id = chembl_id[0] if chembl_id else ""
+    if chembl_id is None:
+        chembl_id = ""
+    chembl_id = str(chembl_id).strip().strip('"').strip("'").upper()
+
+    if not chembl_id:
+        print("gpt_node failed: no chembl_id argument provided")
+        return [], "", [None]
+
     # Fetch the bioactives CSV if it hasn't been cached by a prior call.
     bioactives_csv = f"../scratch/{chembl_id}_bioactives.csv"
     if not os.path.exists(bioactives_csv):

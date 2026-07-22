@@ -869,6 +869,13 @@ def predict_node(smiles_list_in: list[str], chembl_id: str) -> (list[float],str,
     for smile, value in zip(smiles_list, y_raw):
       for ion in ions_to_clean:
         smile = smile.replace(ion,"")
+      # IC50 <= 0 is physically meaningless (missing/placeholder value); log10 is
+      # undefined there and would inject -inf into the training targets, so skip
+      # those rows rather than emitting a divide-by-zero warning.
+      if value is None or value <= 0:
+        if print_flag:
+          print(f"Skipping molecule with non-positive IC50 ({value}): {smile}")
+        continue
       y.append(np.log10(value))
       Xa.append(smile)
 
@@ -917,8 +924,16 @@ def predict_node(smiles_list_in: list[str], chembl_id: str) -> (list[float],str,
     X_train = pd.DataFrame(X_train, columns=feature_names)
     X_test = pd.DataFrame(X_test, columns=feature_names)
 
+    # n_jobs=1 forces single-threaded LightGBM. Inside the modrag process, torch
+    # (Metal/MPS) and the meeko/autodock-vina native libs are already loaded, and
+    # LightGBM's default OpenMP parallel region (n_jobs=-1) SIGSEGVs (exit 139) when
+    # it spawns OMP threads against that already-initialized runtime — predict_node
+    # dies right after "New dimensions are: ...". Disabling OpenMP parallelism
+    # avoids the conflict; on ~2k rows x 217 descriptors the fit is sub-second
+    # anyway, so there is no real cost. Do NOT set this back to -1. See memory note
+    # gpt-finetune-chembl220-crash for the same class of native-lib/Metal crash.
     model = LGBMRegressor(metric='rmse', max_depth = 50, verbose = -1, num_leaves = 31,
-                          feature_fraction = 0.8, min_data_in_leaf = 20)
+                          feature_fraction = 0.8, min_data_in_leaf = 20, n_jobs=1)
     modelname = "LightGBM Regressor"
     model.fit(X_train, y_train)
 
