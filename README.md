@@ -300,7 +300,6 @@ print(check_nearby_molecules('../pdb_files/protein_1ABC.pdb', '../pdb_files/prot
 dock the top-3 pockets by calling `blind_dock(...)` directly from `vina_dock`
 with `npockets=3`. See `BLIND_DOCK_INTEGRATION_PLAN.md` for the full parameter
 set and validation details.
-```
 
 ### Session Memory (saving and recalling sessions)
 Modrag can save a summary of the current session — every PDB, docking-pose
