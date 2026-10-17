@@ -200,3 +200,50 @@ try:
     print("✓ shell_node test passed\n")
 except Exception as e:
     print(f"✗ shell_node test failed: {e}\n")
+
+# Test 11: admet_node() - local ADMET-AI prediction (subset / full / custom)
+print("=" * 60)
+print("TEST 11: admet_node() - ADMET-AI toxicity/ADMET prediction")
+print("=" * 60)
+try:
+    import admet_node as M
+    M.print_flag = False
+    # subset + per-molecule error isolation (model loads once, ~10s)
+    dicts, string, _ = M.admet_node(['CCO', 'not_a_smiles'])
+    assert len(dicts[0]) == 22 and dicts[1] is None and 'invalid SMILES' in string
+    assert 'AMES' in dicts[0] and 'hERG' in dicts[0]
+    # full set
+    d2, s2, _ = M.admet_node(['CCO'], endpoints='full')
+    assert len(d2[0]) > 40, len(d2[0])
+    # custom list + unknown name note
+    d3, s3, _ = M.admet_node('CCO', endpoints=['AMES', 'Bogus_Name'])
+    assert d3[0]['AMES'] and 'Bogus_Name' in s3
+    # percentiles interleaved after their endpoints
+    d4, _, _ = M.admet_node(['CCO'], include_percentiles=True)
+    pct = [k for k in d4[0] if k.endswith('_percentile')]
+    assert len(pct) == 22 and 0 <= float(d4[0]['AMES_drugbank_approved_percentile']) <= 100
+    print("✓ admet_node test passed (subset=22, full=%d endpoints)\n" % len(d2[0]))
+except Exception as e:
+    print(f"✗ admet_node test failed: {e}\n")
+
+# Test 12: similarity_node() - Morgan/Tanimoto similarity + grid image
+print("=" * 60)
+print("TEST 12: similarity_node() - Morgan/Tanimoto similarity")
+print("=" * 60)
+try:
+    import modrag_property_functions as MP
+    MP.print_flag = False
+    # aspirin as reference; salicylic acid scores 0.25 (above the 0.15
+    # cutoff), ethanol 0.11 (below) - verified with BulkTanimotoSimilarity
+    ref = ['CC(=O)Oc1ccccc1C(=O)O']
+    queries = ['OC(=O)c1ccc(O)cc1', 'CCO']
+    data, sim_out, images = MP.similarity_node(ref, queries, sim_cutoff=0.15)
+    assert 'Reference molecule 0 and test molecule 0' in sim_out, sim_out
+    assert 'could not be parsed' not in sim_out
+    # ethanol is dissimilar to aspirin at the default cutoff
+    assert 'test molecule 1 have a similarity' not in sim_out, sim_out
+    assert images, "expected a grid image for the similar pairs"
+    print(sim_out)
+    print("✓ similarity_node test passed\n")
+except Exception as e:
+    print(f"✗ similarity_node test failed: {e}\n")
