@@ -427,7 +427,14 @@ def shell_node(command: str) -> str:
         return _err('no command provided (supported: ' + SUPPORTED + ')')
     if isinstance(command, (list, tuple)):
         command = ' '.join(str(c) for c in command)
-    command = str(command).strip().strip('"').strip("'")
+    command = str(command).strip()
+    # Unwrap the whole command only if BOTH ends carry the same quote char
+    # (the LLM sometimes wraps the entire command in quotes). Do not strip
+    # bare quotes at one end: a command ending in a quoted argument, e.g.
+    # 'find ../scratch -name "*.csv"', would lose its closing quote and fail
+    # to parse.
+    if len(command) >= 2 and command[0] == command[-1] and command[0] in ('"', "'"):
+        command = command[1:-1]
     if not command:
         return _err('no command provided (supported: ' + SUPPORTED + ')')
     if any(c in command for c in ';' + '&|><`$\n'):

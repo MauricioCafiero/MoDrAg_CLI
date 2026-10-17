@@ -186,7 +186,10 @@ try:
     assert '-' in out.splitlines()[0], out  # long form
     out = shell_node('find ../scratch -name "*.csv" -maxdepth 1 -type f')
     assert ('.csv' in out) or ('no matches' in out), out
-    out = shell_node('find ../pdb_files -name "*.pdb" -maxdepth 1 -type f')
+    out = shell_node('find ../scratch -name "*.csv" -maxdepth 1 -type f')
+    assert ('.csv' in out) or ('no matches' in out), out
+    # regression: command ENDING in a quoted argument must still parse
+    out = shell_node('find ../pdb_files -name "*.pdb"')
     assert ('.pdb' in out) or ('no matches' in out), out
     # sandbox: outside the project must be refused
     assert 'project folder denied' in shell_node('ls /etc')
