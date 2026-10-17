@@ -169,3 +169,31 @@ try:
     print("✓ modrag_memory test passed\n")
 except Exception as e:
     print(f"✗ modrag_memory test failed: {e}\n")
+
+# Test 10: shell_node() - sandboxed cross-platform shell (read-only checks,
+# no mkdir here so the test never litters the repo)
+print("=" * 60)
+print("TEST 10: shell_node() - Sandboxed shell tool")
+print("=" * 60)
+try:
+    from modrag_shell_functions import shell_node
+
+    out = shell_node('pwd')
+    assert out.endswith('code'), out  # starts in the code/ directory
+    out = shell_node('ls ../scratch')
+    assert 'shell:' not in out and out.strip() != '', out
+    out = shell_node('ls -lt ../scratch')
+    assert '-' in out.splitlines()[0], out  # long form
+    out = shell_node('find ../scratch -name "*.csv" -maxdepth 1 -type f')
+    assert ('.csv' in out) or ('no matches' in out), out
+    out = shell_node('find ../pdb_files -name "*.pdb" -maxdepth 1 -type f')
+    assert ('.pdb' in out) or ('no matches' in out), out
+    # sandbox: outside the project must be refused
+    assert 'project folder denied' in shell_node('ls /etc')
+    assert 'project folder denied' in shell_node('cd ~')
+    # no chaining, no destructive commands
+    assert 'not supported' in shell_node('chaining redir >/dev/null')
+    assert 'not supported' in shell_node('rm ../scratch')
+    print("✓ shell_node test passed\n")
+except Exception as e:
+    print(f"✗ shell_node test failed: {e}\n")

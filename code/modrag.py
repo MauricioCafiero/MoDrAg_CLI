@@ -21,6 +21,7 @@ from markdown_render import to_unicode_markdown
 from modrag_protein_functions import uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node, predict_node, check_nearby_molecules, get_pdb_file
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
+from modrag_shell_functions import shell_node
 from vina_dock import blind_dock_agent
 from gpt_node import gpt_node
 import modrag_memory
@@ -29,6 +30,7 @@ console = Console(width=80)
 import modrag_protein_functions
 import modrag_molecule_functions
 import modrag_property_functions
+import modrag_shell_functions
 import subs_code
 import vina_dock
 import gpt_node as gpt_node_module
@@ -45,6 +47,7 @@ else:
 modrag_protein_functions.print_flag = print_flag
 modrag_molecule_functions.print_flag = print_flag
 modrag_property_functions.print_flag = print_flag
+modrag_shell_functions.print_flag = print_flag
 subs_code.print_flag = print_flag
 modrag_memory.print_flag = print_flag
 gpt_node_module.print_flag = print_flag
@@ -65,7 +68,8 @@ vina_dock.FALLBACK_TO_SECOND_POCKET = True
 tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
-         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node]
+         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node,
+         shell_node]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -80,7 +84,7 @@ models = [
     'deepseek-v4-pro', 'qwen3.5:397b',
 ]
 
-model = models[0] # default model to use for chat
+model = models[1] # default model to use for chat
 
 sys_message = f'''
 You are a drug discovery assistant names Modrag. You have access to the 
@@ -136,7 +140,8 @@ def chat_turn(prompt: str):
     'check_nearby_molecules': check_nearby_molecules,
     'get_pdb_file': get_pdb_file,
     'blind_dock_agent': blind_dock_agent,
-    'gpt_node': gpt_node
+    'gpt_node': gpt_node,
+    'shell_node': shell_node
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -148,7 +153,8 @@ def chat_turn(prompt: str):
           tools=[uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node, target_node, docking_node, pdb_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
-         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node],
+         check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node,
+         shell_node],
           think=True,
       )
       messages.append(response.message)

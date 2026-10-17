@@ -33,6 +33,9 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 - **Check Nearby Molecules Node**: Verify a docked pose landed in the correct binding site by comparing it against any co-crystallized ligand in the receptor PDB — the recommended follow-up after blind docking
 - **Predict Node**: Predict IC50 values for molecules using LightGBM-trained models
 
+### File System Tools
+- **Shell Node**: A sandboxed, cross-platform mini-shell the agent can use to explore the project's output files — `pwd`, `cd`, `ls` (`-l`, `-t`, `-r`, `-a`), `mkdir`, `find`, `cat`, `head`, `tail`, `wc`, and `grep`. Commands are interpreted internally (no real shell is spawned, stdlib only), so the POSIX-style syntax behaves identically on bash/zsh, PowerShell, and macOS — e.g. `ls -lt ../scratch` or `find ../scratch -name "*.csv"`. All access is restricted to the project folder, wildcard arguments are expanded, and there are intentionally no `rm`/`mv`/`cp` commands.
+
 ### Generative Tools
 - **GPT Node**: Fine-tune a mini SMILES GPT (a 1-block transformer foundation model, `CafChemGPT`) on a ChEMBL target's bioactive molecules and generate novel drug-like candidate molecules for that target. Weights and vocabulary live in `data/` (`GPT_ZN305_mini.pt`, `vocab_305K.txt`, `vocab.txt`, `ZN305K_smiles.csv`); per-target fine-tuned checkpoints are written to `data/GPT_{id}_mini_finetuned.pt` and generated SMILES are cached in `scratch/gen_smiles_{id}.csv`. Requires `torch` (runs on Apple Silicon MPS, CUDA, or CPU). See `code/GPT_INTEGRATION.md` for details.
 
@@ -190,6 +193,7 @@ MoDrAg_CLI/
 │   ├── modrag_molecule_functions.py   # Molecular analysis tools
 │   ├── modrag_property_functions.py   # Molecular property tools
 │   ├── modrag_protein_functions.py    # Protein and docking tools
+│   ├── modrag_shell_functions.py      # Sandboxed cross-platform shell tool
 │   ├── subs_code.py                   # Substitution helper functions
 │   ├── gpt_node.py                    # GPT generative node (MoDrAg entry point)
 │   ├── finetune_gpt.py                # Mini GPT fine-tune + generation logic
