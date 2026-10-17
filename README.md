@@ -36,6 +36,9 @@ A command-line interface (CLI) tool for drug discovery and molecular design. MoD
 ### File System Tools
 - **Shell Node**: A sandboxed, cross-platform mini-shell the agent can use to explore the project's output files — `pwd`, `cd`, `ls` (`-l`, `-t`, `-r`, `-a`), `mkdir`, `find`, `cat`, `head`, `tail`, `wc`, and `grep`. Commands are interpreted internally (no real shell is spawned, stdlib only), so the POSIX-style syntax behaves identically on bash/zsh, PowerShell, and macOS — e.g. `ls -lt ../scratch` or `find ../scratch -name "*.csv"`. All access is restricted to the project folder, wildcard arguments are expanded, and there are intentionally no `rm`/`mv`/`cp` commands.
 
+### ADME/Toxicity Tools
+- **ADMET Node**: Predicts ADMET endpoints from SMILES with the local ADMET-AI Chemprop-v2 models (pip package `admet-ai`; the ~13 MB of MPNN ensemble weights ship inside the wheel — no model download, no network calls at runtime). The agent can choose `endpoints="subset"` (default: a curated panel of 22 early-screening endpoints — AMES mutagenicity, hERG cardiotoxicity, DILI, clinical toxicity, carcinogenicity, skin sensitization, LD50, CYP1A2/2C9/2C19/2D6/3A4 inhibition and substrate, Pgp efflux, HIA, bioavailability, BBB, PAMPA/Caco-2 permeability, plasma protein binding), `endpoints="full"` (all ~52 columns, adding nuclear receptors, stress responses, clearance, half-life, VDss, solubility, lipophilicity), or an explicit list of endpoint names. `include_percentiles=True` adds each endpoint's percentile rank vs. DrugBank approved drugs (percent 0-100). Runs on CPU (~5 ms/mol warm; first call in a session loads the model, ~10 s). Ported from the `admet` repo's `admet_tool.py`.
+
 ### Generative Tools
 - **GPT Node**: Fine-tune a mini SMILES GPT (a 1-block transformer foundation model, `CafChemGPT`) on a ChEMBL target's bioactive molecules and generate novel drug-like candidate molecules for that target. Weights and vocabulary live in `data/` (`GPT_ZN305_mini.pt`, `vocab_305K.txt`, `vocab.txt`, `ZN305K_smiles.csv`); per-target fine-tuned checkpoints are written to `data/GPT_{id}_mini_finetuned.pt` and generated SMILES are cached in `scratch/gen_smiles_{id}.csv`. Requires `torch` (runs on Apple Silicon MPS, CUDA, or CPU). See `code/GPT_INTEGRATION.md` for details.
 
@@ -63,6 +66,7 @@ The project requires the following packages:
 - `rich` - Rich text and markdown rendering for terminal output
 - `torch` - Mini SMILES GPT foundation-model fine-tuning and generation (GPT Node)
 - `pillow` - Image generation for molecule grids (GPT Node and other visualization tools)
+- `admet-ai` - Local ADMET-AI Chemprop-v2 models for the ADMET Node (pulls chemprop + lightning transitively, ~57 MB download; model weights ship inside the wheel)
 
 ### Setup
 
@@ -194,6 +198,7 @@ MoDrAg_CLI/
 │   ├── modrag_property_functions.py   # Molecular property tools
 │   ├── modrag_protein_functions.py    # Protein and docking tools
 │   ├── modrag_shell_functions.py      # Sandboxed cross-platform shell tool
+│   ├── admet_node.py                  # ADMET/Tox prediction node (ADMET-AI)
 │   ├── subs_code.py                   # Substitution helper functions
 │   ├── gpt_node.py                    # GPT generative node (MoDrAg entry point)
 │   ├── finetune_gpt.py                # Mini GPT fine-tune + generation logic

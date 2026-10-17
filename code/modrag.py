@@ -22,6 +22,7 @@ from modrag_protein_functions import uniprot_node, listbioactives_node, getbioac
 from modrag_molecule_functions import name_node, smiles_node, related_node, structure_node, canonical_node
 from modrag_property_functions import substitution_node, pharmfeature_node, lipinski_node, get_qed, similarity_node
 from modrag_shell_functions import shell_node
+from admet_node import admet_node
 from vina_dock import blind_dock_agent
 from gpt_node import gpt_node
 import modrag_memory
@@ -31,6 +32,7 @@ import modrag_protein_functions
 import modrag_molecule_functions
 import modrag_property_functions
 import modrag_shell_functions
+import admet_node as admet_node_module
 import subs_code
 import vina_dock
 import gpt_node as gpt_node_module
@@ -48,6 +50,7 @@ modrag_protein_functions.print_flag = print_flag
 modrag_molecule_functions.print_flag = print_flag
 modrag_property_functions.print_flag = print_flag
 modrag_shell_functions.print_flag = print_flag
+admet_node_module.print_flag = print_flag
 subs_code.print_flag = print_flag
 modrag_memory.print_flag = print_flag
 gpt_node_module.print_flag = print_flag
@@ -69,7 +72,7 @@ tools = [uniprot_node, listbioactives_node, getbioactives_node, find_PDBID_node,
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
          check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node,
-         shell_node]
+         shell_node, admet_node]
 
 #get ket from shell variable $OLLAMA_API_KEY
 ollama_key = os.getenv('OLLAMA_API_KEY')
@@ -141,7 +144,8 @@ def chat_turn(prompt: str):
     'get_pdb_file': get_pdb_file,
     'blind_dock_agent': blind_dock_agent,
     'gpt_node': gpt_node,
-    'shell_node': shell_node
+    'shell_node': shell_node,
+    'admet_node': admet_node
   }
 
   messages.append({'role': 'user', 'content': prompt})
@@ -154,7 +158,7 @@ def chat_turn(prompt: str):
          name_node, smiles_node, related_node, structure_node, canonical_node,
          substitution_node, pharmfeature_node, lipinski_node, get_qed, predict_node, similarity_node,
          check_nearby_molecules, get_pdb_file, blind_dock_agent, gpt_node,
-         shell_node],
+         shell_node, admet_node],
           think=True,
       )
       messages.append(response.message)
